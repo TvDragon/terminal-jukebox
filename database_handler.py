@@ -27,7 +27,7 @@ class SQL_Connector:
 			return
 
 		# Create a Songs table
-		success = self.execute('''CREATE TABLE SONGS(
+		success = self.execute("""CREATE TABLE SONGS(
 			id					INTEGER PRIMARY KEY AUTOINCREMENT,
 			title				TEXT,
 			artist				TEXT,
@@ -36,28 +36,28 @@ class SQL_Connector:
 			duration_ms			INTEGER,
 			file_path			TEXT	UNIQUE,
 			file_hash			TEXT	UNIQUE
-		)''')
+		)""")
 
 		if not success:
 			return
 
 		# Create a Playlists table
-		success = self.execute('''CREATE TABLE PLAYLISTS(
+		success = self.execute("""CREATE TABLE PLAYLISTS(
 			id					INTEGER PRIMARY KEY AUTOINCREMENT,
 			playlist_name		TEXT,
 			is_auto_playlist	INTEGER
-		)''')
+		)""")
 
 		if not success:
 			return
 
 		# Create a table for songs in Playlists
-		success = self.execute('''CREATE TABLE SONGS_PLAYLISTS(
+		success = self.execute("""CREATE TABLE SONGS_PLAYLISTS(
 			song_id						INTEGER,
 			playlist_id					INTEGER,
 			FOREIGN KEY(song_id)		REFERENCES SONGS(id),
 			FOREIGN KEY(playlist_id)	REFERENCES PLAYLISTS(id)
-		)''')
+		)""")
 
 		if not success:
 			return
@@ -93,10 +93,10 @@ class SQL_Connector:
 	def add_song(self, title: str, artist: str, album: str, genres: str,
 			  		duration_ms: int, file_path: str, file_hash: str) -> bool:
 		
-		sql_query = '''
+		sql_query = """
 			INSERT INTO SONGS (title, artist, album, genres, duration_ms, file_path, file_hash)
 			VALUES (?, ?, ?, ?, ?, ?, ?)
-		'''
+		"""
 		
 		success = self.execute(sql_query, (title, artist, album, genres, duration_ms, file_path, file_hash))
 		if not success:
@@ -104,13 +104,28 @@ class SQL_Connector:
 
 		self.commit()
 		return True
+	
+	def remove_song(self, song_id) -> bool:
+
+		sql_query = """
+			DELETE FROM SONGS
+			WHERE id=?
+		"""
+
+		success = self.execute(sql_query, (song_id,))
+
+		if not success:
+			return False
+		
+		self.commit()
+		return True
 
 	def add_playlist(self, playlist_name: str, is_auto_playlist: int) -> bool:
 		
-		sql_query = '''
+		sql_query = """
 			INSERT INTO PLAYLISTS (playlist_name, is_auto_playlist)
 			VALUES (?, ?)
-		'''
+		"""
 
 		success = self.execute(sql_query, (playlist_name, is_auto_playlist))
 
@@ -123,10 +138,10 @@ class SQL_Connector:
 	# Add song to playlist
 	def add_song_to_playlist(self, song_id: int, playlist_id: int) -> bool:
 
-		sql_query = '''
+		sql_query = """
 			INSERT INTO SONGS_PLAYLISTS (song_id, playlist_id)
 			VALUES (?, ?)
-			'''
+			"""
 
 		success = self.execute(sql_query, (song_id, playlist_id))
 
@@ -139,11 +154,11 @@ class SQL_Connector:
 	# Remove song from playlist
 	def remove_song_from_playlist(self, song_id: int, playlist_id: int) -> bool:
 
-		sql_query = '''
+		sql_query = """
 			DELETE FROM SONGS_PLAYLISTS
 			WHERE song_id=?
 			AND playlist_id=?
-			'''
+			"""
 
 		success = self.execute(sql_query, (song_id, playlist_id))
 
@@ -155,10 +170,10 @@ class SQL_Connector:
 
 	def get_songs_in_playlist(self, playlist_name: str) -> list:
 
-		sql_query = '''
+		sql_query = """
 			SELECT id FROM PLAYLISTS
 			WHERE playlist_name=?
-		'''
+		"""
 		
 		self.execute(sql_query, (playlist_name,))
 
@@ -168,10 +183,10 @@ class SQL_Connector:
 		if database_results != None:
 			playlist_id = database_results["id"]
 			
-			sql_query = '''
+			sql_query = """
 				SELECT song_id FROM SONGS_PLAYLISTS
 				WHERE playlist_id=?
-			'''
+			"""
 
 			self.execute(sql_query, (playlist_id,))
 
@@ -180,10 +195,10 @@ class SQL_Connector:
 			for result in results:
 				song_id = result["song_id"]
 				
-				sql_query = '''
+				sql_query = """
 					SELECT * FROM SONGS
 					WHERE id=?
-				'''
+				"""
 
 				self.execute(sql_query, (song_id,))
 
@@ -195,9 +210,9 @@ class SQL_Connector:
 
 	def get_all_songs(self) -> list:
 
-		sql_query = '''
+		sql_query = """
 			SELECT * FROM SONGS
-		'''
+		"""
 
 		self.execute(sql_query)
 
@@ -207,11 +222,11 @@ class SQL_Connector:
 	
 	def is_song_in_playlist(self, song_id: int, playlist_id: int) -> bool:
 
-		sql_query = '''
+		sql_query = """
 			SELECT 1 FROM SONGS_PLAYLISTS
 			WHERE song_id=?
 			AND playlist_id=?
-		'''
+		"""
 
 		self.execute(sql_query, (song_id, playlist_id))
 		
