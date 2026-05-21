@@ -1,0 +1,103 @@
+#root {
+	align: center middle;
+	layout: vertical;
+	height: 1fr;
+}
+
+/* ── Header & Footer ── */
+
+Header {
+    background: #32302F;
+    color: #B8BB26;
+    text-style: bold;
+    dock: top;
+    height: 1;
+}
+
+Footer {
+    background: #32302F;
+    color: #B8BB26;
+}
+
+FooterKey .footer-key--key {
+    color: #B8BB26;
+    text-style: bold;
+}
+
+FooterKey .footer-key--description {
+    color: #E8DBB4;
+}
+
+/* ---  TOP BAR --- */
+
+#top-box {
+	dock: top;
+	height: auto;
+}
+
+#main-box {
+	height: 1fr;
+}
+
+.box {
+	margin: 0 1;
+}
+
+.main-border {
+	height: auto;
+	border: round #B8BB26;
+}
+
+#top-bar Input {
+	width: 1fr;
+}
+
+#top-bar Button {
+	width: auto;
+	min-width: 12;
+}
+
+/* --- Buttons --- */
+
+Button {
+	background: #314048;
+	color: #d9d9d9;
+	border: tall #32302F;
+}
+
+/* --- Tab Navigation --- */
+
+TabbedContent {
+    background: #314048;
+}
+
+TabPane {
+    padding: 1 2;
+}
+
+Tabs {
+    background: #161b22;
+    dock: top;
+    height: 3;
+}
+
+Tab {
+    background: #161b22;
+    color: #8b949e;
+    padding: 0 2;
+}
+
+Tab:hover {
+    background: #21262d;
+    color: #c9d1d9;
+}
+
+Tab.-active {
+    background: #56666f;
+    color: #d9d9d9;
+    text-style: bold;
+}
+
+Underline {
+    color: #31748F;
+}
