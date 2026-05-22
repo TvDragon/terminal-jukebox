@@ -2,6 +2,12 @@
 	align: center middle;
 	layout: vertical;
 	height: 1fr;
+    background: #232e30;
+}
+
+.main-border {
+	height: auto;
+	border: round #B8BB26;
 }
 
 /* ── Header & Footer ── */
@@ -37,11 +43,6 @@ FooterKey .footer-key--description {
 
 #main-box {
 	height: 1fr;
-}
-
-.main-border {
-	height: auto;
-	border: round #B8BB26;
 }
 
 #top-bar Input {
@@ -94,6 +95,40 @@ Tab.-active {
     text-style: bold;
 }
 
-Underline {
-    color: #31748F;
+/* --- Bottom Bar --- */
+
+Label {
+    color: #d9d9d9;
+}
+
+#bottom-box {
+	max-height: 8;
+	border: round #B8BB26;
+}
+
+#song-info {
+    align: left middle;
+}
+
+#music-player * {
+    align: center middle;
+}
+
+#duration-slider {
+    width: 45;
+    background: #314048;
+}
+
+#volume-control {
+    align: right middle;
+}
+
+#vol-label, #start-dur, #end-dur {
+    text-style: bold;
+    padding: 1;
+}
+
+#volume-slider {
+    width: 20;
+    background: #314048;
 }
