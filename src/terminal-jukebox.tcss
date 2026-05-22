@@ -39,10 +39,6 @@ FooterKey .footer-key--description {
 	height: 1fr;
 }
 
-.box {
-	margin: 0 1;
-}
-
 .main-border {
 	height: auto;
 	border: round #B8BB26;
