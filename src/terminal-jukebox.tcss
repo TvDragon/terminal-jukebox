@@ -10,7 +10,7 @@
 	border: round #B8BB26;
 }
 
-/* ── Header & Footer ── */
+/* --- Header & Footer --- */
 
 Header {
     background: #32302F;
@@ -114,21 +114,6 @@ Label {
     align: center middle;
 }
 
-#duration-slider {
-    width: 45;
-    background: #314048;
-}
-
 #volume-control {
     align: right middle;
-}
-
-#vol-label, #start-dur, #end-dur {
-    text-style: bold;
-    padding: 1;
-}
-
-#volume-slider {
-    width: 20;
-    background: #314048;
 }

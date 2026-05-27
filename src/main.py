@@ -51,13 +51,15 @@ def normalise_text(text: str) -> str:
 	return final_text.lower()
 
 def make_bar(current: int, max: int, width: int) -> str:
-	ratio = current / max
-	filled = int(ratio * width)
-	empty = width - filled
+	if max != 0:
+		ratio = current / max
+		filled = int(ratio * width)
+		empty = width - filled
+		return f"[{'█' * filled}{'-' * empty}]"
 
-	return f"[{'█' * filled}{'-' * empty}]"
+	return f"[{'-' * width}]"
 
-def make_progress_bar(current: int, duration: int, width: int=50) -> str:
+def make_progress_bar_timer(current: int, duration: int, width: int=50) -> str:
 	bar = make_bar(current, duration, width)
 	progress_bar = "{}:{:02d} {} {}:{:02d}".format(int(current / 60),
 													int(current % 60),
@@ -65,6 +67,20 @@ def make_progress_bar(current: int, duration: int, width: int=50) -> str:
 													int(duration / 60),
 													int(duration % 60))
 	return progress_bar
+
+def render_volume_bar(volume: int) -> str:
+    total = 20
+
+    filled = int((volume / 100) * total)
+    empty = total - filled
+
+    return (
+			"[bold]🔊[/bold]"
+			f"[green]{'─' * (filled - 1)}[green]"
+			"[bold green]\u25a0[/bold green]"
+			f"[grey]{'─' * empty}[grey]"
+			f" {volume}%"
+		)
 
 # --- Music Table View --------------------------------------------------------
 
@@ -99,6 +115,8 @@ class TerminalJukeBox(App):
 	CSS_PATH = "terminal-jukebox.tcss"
 	BINDINGS = [
 		Binding("ctrl+q", "quit", "Quit"),
+		Binding("ctrl+down", "volume_down", "Vol Down"),
+		Binding("ctrl+up", "volume_up", "Vol Up"),
 	]
 
 	def __init__(self):
@@ -107,23 +125,31 @@ class TerminalJukeBox(App):
 		self.all_songs = self.sql_db_connector.get_all_songs()
 		self.playlist_songs = []
 		self.playlist_name = None
-		self.current_tab = "tab-music"
-		
+		self.current_tab = ""
+		self.play_all_songs = True	# All songs library or specific playlist to play
+		self.volume = 40
+
 		self.song_idx_playing = 0
 		self.is_playing = False
-		self.current_position = 180
-		self.duration = 60
+		self.current_position = 0
+		self.duration = 0
 
 		self.playback = Playback()
-		self.next_song()
-
-		self.progress_bar = make_progress_bar(self.current_position, self.duration)
+		self.playback.set_volume(self.volume / 100)
+		self.progress_bar = make_progress_bar_timer(self.current_position, self.duration)
 
 	def on_mount(self):
 		table = self.query_one("#music-table", MusicTable)
 		table.set_songs(self.all_songs)
+		self.current_tab = self.query_one("#tabs", TabbedContent).active
 
 		self.set_interval(1, self.update_progress)	# Update progress bar every second
+		self.update_volume_bar()
+
+		self.next_song()
+		if len(self.all_songs) > 0:
+			self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(self.all_songs[self.song_idx_playing]["title"]))
+			self.query_one("#lbl-artist", Label).update(self.all_songs[self.song_idx_playing]["artist"])
 
 	def load_songs(self):
 		self.all_songs = self.sql_db_connector.get_all_songs()
@@ -139,17 +165,20 @@ class TerminalJukeBox(App):
 			if self.current_position > self.duration:
 				self.current_position = 0
 				self.song_idx_playing += 1
-				# Get length of all songs or playlist
+				# TODO: Get length of all songs or playlist. Stop playing if finished.
 				self.next_song()
 				self.playback.play()
 				
-			self.progress_bar = make_progress_bar(self.current_position, self.duration)
+			self.progress_bar = make_progress_bar_timer(self.current_position, self.duration)
 			self.query_one("#progress-bar-song", Static).update(self.progress_bar)
 
 	def next_song(self):
 		if len(self.all_songs) > 0:
 			self.playback.load_file(self.all_songs[self.song_idx_playing]["file_path"])
 			self.duration = int(self.all_songs[self.song_idx_playing]["duration_ms"] / 1000)
+
+	def update_volume_bar(self):
+		self.query_one("#volume-bar", Static).update(render_volume_bar(self.volume))
 
 	def compose(self) -> ComposeResult:
 		yield Header()
@@ -182,17 +211,16 @@ class TerminalJukeBox(App):
 			with Container(id="bottom-box"):
 				with Horizontal(id="bottom-bar"):
 					with Vertical(id="song-info"):
-						yield Label("[bold]Title[/bold]")
-						yield Label("Artist")
+						yield Label("[bold]Title[/bold]", id="lbl-title")
+						yield Label("Artist", id="lbl-artist")
 					with Vertical(id="music-player"):
 						with Horizontal(id="music-controls", classes="music-btns"):
-							yield Button("⏮ Prev", id="btn-prev")
-							yield Button("⏯ Play", id="btn-play-pause")
-							yield Button("⏭ Next", id="btn-next")
+							yield Button("\u23ee Prev", id="btn-prev")
+							yield Button("\u25b6 Play", id="btn-play-pause")
+							yield Button("\u23ed Next", id="btn-next")
 						yield Static(self.progress_bar, id="progress-bar-song")
 					with Horizontal(id="volume-control"):
-						yield Label("[bold green]🔊[/bold green]", id="vol-label")
-						yield Slider(id="volume-slider", min=0, max=100, step=5, value=40)
+						yield Static("", id="volume-bar")
 
 			# --- Bottom Section (Current song being played) ---
 		yield Footer()
@@ -242,13 +270,26 @@ class TerminalJukeBox(App):
 
 		btn = self.query_one("#btn-play-pause", Button)
 		if self.is_playing:
-			btn.label = "⏯ Pause"
+			btn.label = "\u23f8 Pause"
 			self.playback.play()
 			self.playback.seek(self.current_position)
 		else:
-			btn.label = "⏯ Play"
+			btn.label = "\u25B6 Play"
 			self.playback.pause()
-	
+
+	def action_volume_up(self) -> None:
+		self.volume = min(100, self.volume + 5)
+
+		self.playback.set_volume(self.volume / 100)
+
+		self.update_volume_bar()
+
+	def action_volume_down(self) -> None:
+		self.volume = max(0, self.volume - 5)
+
+		self.playback.set_volume(self.volume / 100)
+
+		self.update_volume_bar()
 
 # --- Entry Point -------------------------------------------------------------
 
