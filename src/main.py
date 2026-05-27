@@ -69,12 +69,12 @@ def make_progress_bar_timer(current: int, duration: int, width: int=50) -> str:
 	return progress_bar
 
 def render_volume_bar(volume: int) -> str:
-    total = 20
+	total = 20
 
-    filled = int((volume / 100) * total)
-    empty = total - filled
+	filled = int((volume / 100) * total)
+	empty = total - filled
 
-    return (
+	return (
 			"[bold]🔊[/bold]"
 			f"[green]{'─' * (filled - 1)}[green]"
 			"[bold green]\u25a0[/bold green]"
@@ -129,7 +129,7 @@ class TerminalJukeBox(App):
 		self.play_all_songs = True	# All songs library or specific playlist to play
 		self.volume = 40
 
-		self.song_idx_playing = 0
+		self.song_idx_playing = -1
 		self.is_playing = False
 		self.current_position = 0
 		self.duration = 0
@@ -138,7 +138,7 @@ class TerminalJukeBox(App):
 		self.playback.set_volume(self.volume / 100)
 		self.progress_bar = make_progress_bar_timer(self.current_position, self.duration)
 
-	def on_mount(self):
+	def on_mount(self) -> None:
 		table = self.query_one("#music-table", MusicTable)
 		table.set_songs(self.all_songs)
 		self.current_tab = self.query_one("#tabs", TabbedContent).active
@@ -147,11 +147,8 @@ class TerminalJukeBox(App):
 		self.update_volume_bar()
 
 		self.next_song()
-		if len(self.all_songs) > 0:
-			self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(self.all_songs[self.song_idx_playing]["title"]))
-			self.query_one("#lbl-artist", Label).update(self.all_songs[self.song_idx_playing]["artist"])
 
-	def load_songs(self):
+	def load_songs(self) -> None:
 		self.all_songs = self.sql_db_connector.get_all_songs()
 
 	def load_playlist(self) -> list:
@@ -159,23 +156,40 @@ class TerminalJukeBox(App):
 			self.playlist_songs = self.sql_db_connector.get_songs_in_playlist(self.playlist_name)
 		return self.playlist_songs
 	
-	def update_progress(self):
+	def update_progress(self) -> None:
 		if self.is_playing:
 			self.current_position += 1
 			if self.current_position > self.duration:
-				self.current_position = 0
-				self.song_idx_playing += 1
-				# TODO: Get length of all songs or playlist. Stop playing if finished.
 				self.next_song()
-				self.playback.play()
 				
 			self.progress_bar = make_progress_bar_timer(self.current_position, self.duration)
 			self.query_one("#progress-bar-song", Static).update(self.progress_bar)
 
-	def next_song(self):
+	def load_song(self) -> None:
+		self.playback.load_file(self.all_songs[self.song_idx_playing]["file_path"])
+		self.duration = int(self.all_songs[self.song_idx_playing]["duration_ms"] / 1000)
+		if self.is_playing:
+			self.playback.play()
+		
+		self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(self.all_songs[self.song_idx_playing]["title"]))
+		self.query_one("#lbl-artist", Label).update(self.all_songs[self.song_idx_playing]["artist"])
+		
+		self.progress_bar = make_progress_bar_timer(self.current_position, self.duration)
+		self.query_one("#progress-bar-song", Static).update(self.progress_bar)
+
+	def previous_song(self) -> None:
 		if len(self.all_songs) > 0:
-			self.playback.load_file(self.all_songs[self.song_idx_playing]["file_path"])
-			self.duration = int(self.all_songs[self.song_idx_playing]["duration_ms"] / 1000)
+			self.current_position = 0
+			self.song_idx_playing -= 1
+			# TODO: Get length of all songs or playlist. Cannot go to end of song library or playlist
+			self.load_song()
+
+	def next_song(self) -> None:
+		if len(self.all_songs) > 0:
+			self.current_position = 0
+			self.song_idx_playing += 1
+			# TODO: Get length of all songs or playlist. Stop playing if finished.
+			self.load_song()
 
 	def update_volume_bar(self):
 		self.query_one("#volume-bar", Static).update(render_volume_bar(self.volume))
@@ -265,7 +279,7 @@ class TerminalJukeBox(App):
 	# --- Music Control Buttons -----------------------------------------------
 
 	@on(Button.Pressed, "#btn-play-pause")
-	def play_play_song(self) -> None:
+	def pressed_play_pause_song(self) -> None:
 		self.is_playing = not self.is_playing
 
 		btn = self.query_one("#btn-play-pause", Button)
@@ -276,6 +290,16 @@ class TerminalJukeBox(App):
 		else:
 			btn.label = "\u25B6 Play"
 			self.playback.pause()
+
+	@on(Button.Pressed, "#btn-prev")
+	def pressed_prev_song(self) -> None:
+		self.previous_song()
+
+	@on(Button.Pressed, "#btn-next")
+	def pressed_next_song(self) -> None:
+		self.next_song()
+
+	# --- Action Key Bindings -----------------------------------------------
 
 	def action_volume_up(self) -> None:
 		self.volume = min(100, self.volume + 5)
