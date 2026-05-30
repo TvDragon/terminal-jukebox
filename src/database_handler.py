@@ -167,6 +167,17 @@ class SQL_Connector:
 
 		self.commit()
 		return True
+	
+	def get_all_playlists(self) -> list:
+		sql_query = """
+			SELECT * FROM PLAYLISTS
+		"""
+
+		self.execute(sql_query)
+
+		all_playlists = self.db_cursor.fetchall()
+
+		return all_playlists
 
 	def get_songs_in_playlist(self, playlist_name: str) -> list:
 

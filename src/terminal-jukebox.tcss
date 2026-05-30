@@ -65,7 +65,7 @@ Button {
 /* --- Tab Navigation --- */
 
 TabbedContent {
-    background: #314048;
+    background: #232e30;
 }
 
 TabPane {
@@ -73,7 +73,7 @@ TabPane {
 }
 
 Tabs {
-    background: #161b22;
+    background: #232e30;
     dock: top;
     height: 3;
 }
@@ -93,6 +93,33 @@ Tab.-active {
     background: #56666f;
     color: #d9d9d9;
     text-style: bold;
+}
+
+/* --- Playlists Section --- */
+
+#playlists {
+    max-width: 20;
+}
+
+#playlists, #song-playlists {
+    background: #314048;
+    color: #314048;
+}
+
+
+.playlist-btn {
+    background: #56666f;
+    min-width: 20;
+    margin: 0 0 1 0;
+}
+
+.title {
+    color: #d9d9d9;
+    margin: 0 0 1 0;
+}
+
+.active-playlist-btn {
+    background: #232e30;
 }
 
 /* --- Bottom Bar --- */

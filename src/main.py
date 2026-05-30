@@ -103,6 +103,17 @@ class MusicTable(DataTable):
 			song_duration = "{}:{:02d}".format(minutes, seconds)
 			self.add_row(song["id"], song["title"], song["artist"], song["album"], song["genres"], song_duration)
 
+# --- Playlist Button Widget --------------------------------------------------
+
+class PlaylistButton(Static):
+
+	def __init__(self, id: int, playlist_name: str) -> None:
+		super().__init__()
+		self.playlist_name = playlist_name
+		self.playlist_id = id
+
+	def compose(self) -> ComposeResult:
+		yield Button("{}".format(self.playlist_name), id="btn-playlist-{}".format(self.playlist_id), classes="playlist-btn")
 
 # --- Main Application --------------------------------------------------------
 
@@ -123,11 +134,15 @@ class TerminalJukeBox(App):
 		super().__init__()
 		self.sql_db_connector = SQL_Connector()
 		self.all_songs = self.sql_db_connector.get_all_songs()
-		self.playlist_songs = []
-		self.playlist_name = None
+		self.playlists = self.sql_db_connector.get_all_playlists()
+		self.playlist_songs_active = []
+		self.playlist_songs_view = []
+		self.playlist_name = self.playlists[0]["playlist_name"] if len(self.playlists) > 0 else None
+		self.playlist_id = self.playlists[0]["id"] if len(self.playlists) > 0 else 0
 		self.current_tab = ""
 		self.play_all_songs = True	# All songs library or specific playlist to play
 		self.volume = 40
+		self.btn_num_pressed = 0
 
 		self.song_idx_playing = -1
 		self.is_playing = False
@@ -139,9 +154,16 @@ class TerminalJukeBox(App):
 		self.progress_bar = make_progress_bar_timer(self.current_position, self.duration)
 
 	def on_mount(self) -> None:
-		table = self.query_one("#music-table", MusicTable)
-		table.set_songs(self.all_songs)
+		music_table = self.query_one("#music-table", MusicTable)
+		music_table.set_songs(self.all_songs)
 		self.current_tab = self.query_one("#tabs", TabbedContent).active
+
+		playlist_table = self.query_one("#songs-playlist-table", MusicTable)
+		playlist_table.set_songs(self.playlist_songs_view)
+
+		playlists_widget = self.query_one("#playlists", VerticalScroll)
+		for playlist in self.playlists:
+			playlists_widget.mount(PlaylistButton(playlist["id"], playlist["playlist_name"]))
 
 		self.set_interval(1, self.update_progress)	# Update progress bar every second
 		self.update_volume_bar()
@@ -151,10 +173,9 @@ class TerminalJukeBox(App):
 	def load_songs(self) -> None:
 		self.all_songs = self.sql_db_connector.get_all_songs()
 
-	def load_playlist(self) -> list:
+	def load_playlist_view(self) -> None:
 		if self.playlist_name != None:
-			self.playlist_songs = self.sql_db_connector.get_songs_in_playlist(self.playlist_name)
-		return self.playlist_songs
+			self.playlist_songs_view = self.sql_db_connector.get_songs_in_playlist(self.playlist_name)
 	
 	def update_progress(self) -> None:
 		if self.is_playing:
@@ -166,35 +187,42 @@ class TerminalJukeBox(App):
 			self.query_one("#progress-bar-song", Static).update(self.progress_bar)
 
 	def load_song(self) -> None:
-		self.playback.load_file(self.all_songs[self.song_idx_playing]["file_path"])
-		self.duration = int(self.all_songs[self.song_idx_playing]["duration_ms"] / 1000)
+		self.current_position = 0
+		if self.play_all_songs:
+			self.playback.load_file(self.all_songs[self.song_idx_playing]["file_path"])
+			self.duration = int(self.all_songs[self.song_idx_playing]["duration_ms"] / 1000)
+			
+			self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(self.all_songs[self.song_idx_playing]["title"]))
+			self.query_one("#lbl-artist", Label).update(self.all_songs[self.song_idx_playing]["artist"])
+		else:
+			self.playback.load_file(self.playlist_songs_active[self.song_idx_playing]["file_path"])
+			self.duration = int(self.playlist_songs_active[self.song_idx_playing]["duration_ms"] / 1000)
+			
+			self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(self.playlist_songs_active[self.song_idx_playing]["title"]))
+			self.query_one("#lbl-artist", Label).update(self.playlist_songs_active[self.song_idx_playing]["artist"])
+
 		if self.is_playing:
 			self.playback.play()
-		
-		self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(self.all_songs[self.song_idx_playing]["title"]))
-		self.query_one("#lbl-artist", Label).update(self.all_songs[self.song_idx_playing]["artist"])
 		
 		self.progress_bar = make_progress_bar_timer(self.current_position, self.duration)
 		self.query_one("#progress-bar-song", Static).update(self.progress_bar)
 
 	def previous_song(self) -> None:
 		if len(self.all_songs) > 0:
-			self.current_position = 0
 			self.song_idx_playing -= 1
 			if self.song_idx_playing < 0:
 				if self.play_all_songs:
 					self.song_idx_playing = len(self.all_songs) - 1
 				else:
-					self.song_idx_playing = len(self.playlist_songs) - 1
+					self.song_idx_playing = len(self.playlist_songs_active) - 1
 			self.load_song()
 
 	def next_song(self) -> None:
 		if len(self.all_songs) > 0:
-			self.current_position = 0
 			self.song_idx_playing += 1
 			if self.song_idx_playing >= len(self.all_songs) and self.play_all_songs:
 				self.song_idx_playing = 0
-			elif self.song_idx_playing >= len(self.playlist_songs) and not self.play_all_songs:
+			elif self.song_idx_playing >= len(self.playlist_songs_active) and not self.play_all_songs:
 				self.song_idx_playing = 0
 			self.load_song()
 
@@ -225,10 +253,13 @@ class TerminalJukeBox(App):
 
 					# --- All Playlists Tab ---
 					with TabPane("Playlists", id="tab-playlists"):
-						yield Label("[bold]Playlists[/bold]")
-						with VerticalScroll(id="songs-playlist"):
-							yield MusicTable(id="songs-playlist-table")
+						with Horizontal(id="playlists-section"):
+							with VerticalScroll(id="playlists"):
+								yield Label("[bold]Playlists[/bold]", classes="title")
+							with VerticalScroll(id="songs-playlist"):
+								yield MusicTable(id="songs-playlist-table")
 
+			# --- Bottom Section (Current song being played) ---
 			with Container(id="bottom-box"):
 				with Horizontal(id="bottom-bar"):
 					with Vertical(id="song-info"):
@@ -243,7 +274,6 @@ class TerminalJukeBox(App):
 					with Horizontal(id="volume-control"):
 						yield Static("", id="volume-bar")
 
-			# --- Bottom Section (Current song being played) ---
 		yield Footer()
 
 	# --- Tabbed Content handler ----------------------------------------------
@@ -259,8 +289,8 @@ class TerminalJukeBox(App):
 			table.set_songs(self.all_songs)
 		elif tab_id == "tab-playlists":
 			table = self.query_one("#songs-playlist-table", MusicTable)
-			songs = self.load_playlist()
-			table.set_songs(songs)
+			self.load_playlist_view()
+			table.set_songs(self.playlist_songs_view)
 		self.current_tab = tab_id
 
 	# --- Search Bar ----------------------------------------------------------
@@ -277,11 +307,38 @@ class TerminalJukeBox(App):
 					results.append(song)
 			table = self.query_one("#music-table", MusicTable)
 		elif self.current_tab == "tab-playlists":
-			for song in self.playlist_songs:
+			for song in self.playlist_songs_view:
 				if searched_music.lower() in normalise_text(song["title"]):
 					results.append(song)
 			table = self.query_one("#songs-playlist-table", MusicTable)
 		table.set_songs(results)
+
+	# --- Music Control Buttons -----------------------------------------------
+	
+	@on(Button.Pressed, ".playlist-btn")
+	def pressed_btn_playlist(self, event: Button.Pressed) -> None:
+		playlist_widget = event.button.parent
+
+		self.query_one("#btn-playlist-{}".format(self.playlist_id), Button).remove_class("active-playlist-btn")
+		event.button.add_class("active-playlist-btn")
+		if self.playlist_name == playlist_widget.playlist_name:
+			if self.btn_num_pressed == 1:
+				btn = self.query_one("#btn-play-pause", Button)
+				btn.label = "\u23f8 Pause"
+				self.play_all_songs = False
+				self.song_idx_playing = 0
+				self.is_playing = True
+				self.playlist_songs_active = self.sql_db_connector.get_songs_in_playlist(self.playlist_name)
+				self.load_song()
+		else:
+			self.playlist_name = playlist_widget.playlist_name
+			self.playlist_id = playlist_widget.playlist_id
+			self.load_playlist_view()
+
+			playlist_table = self.query_one("#songs-playlist-table", MusicTable)
+			playlist_table.set_songs(self.playlist_songs_view)
+			self.btn_num_pressed = 0
+		self.btn_num_pressed += 1
 
 	# --- Music Control Buttons -----------------------------------------------
 
@@ -297,6 +354,7 @@ class TerminalJukeBox(App):
 		else:
 			btn.label = "\u25B6 Play"
 			self.playback.pause()
+		self.btn_num_pressed = 0
 
 	@on(Button.Pressed, "#btn-prev")
 	def pressed_prev_song(self) -> None:
