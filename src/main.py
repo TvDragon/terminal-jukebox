@@ -181,14 +181,21 @@ class TerminalJukeBox(App):
 		if len(self.all_songs) > 0:
 			self.current_position = 0
 			self.song_idx_playing -= 1
-			# TODO: Get length of all songs or playlist. Cannot go to end of song library or playlist
+			if self.song_idx_playing < 0:
+				if self.play_all_songs:
+					self.song_idx_playing = len(self.all_songs) - 1
+				else:
+					self.song_idx_playing = len(self.playlist_songs) - 1
 			self.load_song()
 
 	def next_song(self) -> None:
 		if len(self.all_songs) > 0:
 			self.current_position = 0
 			self.song_idx_playing += 1
-			# TODO: Get length of all songs or playlist. Stop playing if finished.
+			if self.song_idx_playing >= len(self.all_songs) and self.play_all_songs:
+				self.song_idx_playing = 0
+			elif self.song_idx_playing >= len(self.playlist_songs) and not self.play_all_songs:
+				self.song_idx_playing = 0
 			self.load_song()
 
 	def update_volume_bar(self):
