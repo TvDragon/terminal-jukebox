@@ -87,6 +87,9 @@ def render_volume_bar(volume: int) -> str:
 class MusicTable(DataTable):
 
 	def on_mount(self):
+		self.cursor_type = "row"
+		self.zebra_stripes = True
+
 		self.add_column("ID", width=4)
 		self.add_column("Title", width=35)
 		self.add_column("Artist", width=12)
@@ -97,11 +100,11 @@ class MusicTable(DataTable):
 	def set_songs(self, songs):
 		self.clear()
 
-		for song in songs:
+		for idx, song in enumerate(songs):
 			minutes = int((song["duration_ms"] / 1000) / 60)
 			seconds = int((song["duration_ms"] / 1000) % 60)
 			song_duration = "{}:{:02d}".format(minutes, seconds)
-			self.add_row(song["id"], song["title"], song["artist"], song["album"], song["genres"], song_duration)
+			self.add_row(song["id"], song["title"], song["artist"], song["album"], song["genres"], song_duration, key=str(idx))
 
 # --- Playlist Button Widget --------------------------------------------------
 
@@ -197,6 +200,8 @@ class TerminalJukeBox(App):
 		self.query_one("#lbl-artist", Label).update(curr_song["artist"])
 
 		if self.is_playing:
+			btn = self.query_one("#btn-play-pause", Button)
+			btn.label = "\u23f8 Pause"
 			self.playback.play()
 		
 		self.progress_bar = make_progress_bar_timer(self.current_position, self.duration)
@@ -307,6 +312,27 @@ class TerminalJukeBox(App):
 					results.append(song)
 			table = self.query_one("#songs-playlist-table", MusicTable)
 		table.set_songs(results)
+
+	# --- Music Table Actions -------------------------------------------------
+
+	@on(DataTable.RowSelected, "#music-table")
+	def music_table_row_selected(self, event: DataTable.RowSelected) -> None:
+		song_id = event.row_key.value
+
+		self.song_idx = int(song_id)
+		self.play_all_songs = True
+		self.is_playing = True
+		self.load_song()
+
+	@on(DataTable.RowSelected, "#songs-playlist-table")
+	def songs_playlist_table_row_selected(self, event: DataTable.RowSelected) -> None:
+		song_id = event.row_key.value
+
+		self.song_idx = int(song_id)
+		self.play_all_songs = False
+		self.is_playing = True
+		self.playlist_songs_active = self.playlist_songs_view
+		self.load_song()
 
 	# --- Music Control Buttons -----------------------------------------------
 	
