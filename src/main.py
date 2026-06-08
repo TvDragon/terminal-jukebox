@@ -144,7 +144,7 @@ class TerminalJukeBox(App):
 		self.volume = 40
 		self.btn_num_pressed = 0
 
-		self.song_idx_playing = -1
+		self.song_idx = -1
 		self.is_playing = False
 		self.current_position = 0
 		self.duration = 0
@@ -188,18 +188,13 @@ class TerminalJukeBox(App):
 
 	def load_song(self) -> None:
 		self.current_position = 0
-		if self.play_all_songs:
-			self.playback.load_file(self.all_songs[self.song_idx_playing]["file_path"])
-			self.duration = int(self.all_songs[self.song_idx_playing]["duration_ms"] / 1000)
-			
-			self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(self.all_songs[self.song_idx_playing]["title"]))
-			self.query_one("#lbl-artist", Label).update(self.all_songs[self.song_idx_playing]["artist"])
-		else:
-			self.playback.load_file(self.playlist_songs_active[self.song_idx_playing]["file_path"])
-			self.duration = int(self.playlist_songs_active[self.song_idx_playing]["duration_ms"] / 1000)
-			
-			self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(self.playlist_songs_active[self.song_idx_playing]["title"]))
-			self.query_one("#lbl-artist", Label).update(self.playlist_songs_active[self.song_idx_playing]["artist"])
+		curr_song = self.all_songs[self.song_idx] if self.play_all_songs else self.playlist_songs_active[self.song_idx]
+
+		self.playback.load_file(curr_song["file_path"])
+		self.duration = int(curr_song["duration_ms"] / 1000)
+		
+		self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(curr_song["title"]))
+		self.query_one("#lbl-artist", Label).update(curr_song["artist"])
 
 		if self.is_playing:
 			self.playback.play()
@@ -209,21 +204,21 @@ class TerminalJukeBox(App):
 
 	def previous_song(self) -> None:
 		if len(self.all_songs) > 0:
-			self.song_idx_playing -= 1
-			if self.song_idx_playing < 0:
+			self.song_idx -= 1
+			if self.song_idx < 0:
 				if self.play_all_songs:
-					self.song_idx_playing = len(self.all_songs) - 1
+					self.song_idx = len(self.all_songs) - 1
 				else:
-					self.song_idx_playing = len(self.playlist_songs_active) - 1
+					self.song_idx = len(self.playlist_songs_active) - 1
 			self.load_song()
 
 	def next_song(self) -> None:
 		if len(self.all_songs) > 0:
-			self.song_idx_playing += 1
-			if self.song_idx_playing >= len(self.all_songs) and self.play_all_songs:
-				self.song_idx_playing = 0
-			elif self.song_idx_playing >= len(self.playlist_songs_active) and not self.play_all_songs:
-				self.song_idx_playing = 0
+			self.song_idx += 1
+			if self.song_idx >= len(self.all_songs) and self.play_all_songs:
+				self.song_idx = 0
+			elif self.song_idx >= len(self.playlist_songs_active) and not self.play_all_songs:
+				self.song_idx = 0
 			self.load_song()
 
 	def update_volume_bar(self):
@@ -326,7 +321,7 @@ class TerminalJukeBox(App):
 				btn = self.query_one("#btn-play-pause", Button)
 				btn.label = "\u23f8 Pause"
 				self.play_all_songs = False
-				self.song_idx_playing = 0
+				self.song_idx = 0
 				self.is_playing = True
 				self.playlist_songs_active = self.sql_db_connector.get_songs_in_playlist(self.playlist_name)
 				self.load_song()
