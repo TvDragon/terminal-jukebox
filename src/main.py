@@ -90,11 +90,11 @@ class MusicTable(DataTable):
 		self.cursor_type = "row"
 		self.zebra_stripes = True
 
-		self.add_column("ID", width=4)
+		self.add_column("ID", width=6)
 		self.add_column("Title", width=35)
-		self.add_column("Artist", width=12)
-		self.add_column("Album", width=12)
-		self.add_column("Genres", width=12)
+		self.add_column("Artist", width=15)
+		self.add_column("Album", width=15)
+		self.add_column("Genres", width=15)
 		self.add_column("Duration", width=8)
 	
 	def set_songs(self, songs):
