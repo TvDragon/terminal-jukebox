@@ -1,7 +1,3 @@
-from time import monotonic
-
-from just_playback import Playback
-
 from textual import events, on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -33,22 +29,11 @@ from textual.widgets import (
 )
 from textual.widgets.selection_list import Selection
 
-import unicodedata
-
-from database_handler import SQL_Connector
-
-def normalise_text(text: str) -> str:
-	# NFD = Normalization Form Decomposed
-	# Mn = Mark, Nonspacing
-	normalised_text = unicodedata.normalize("NFD", text)
-
-	final_text = ""
-	for character in normalised_text:
-		category = unicodedata.category(character)
-		if category != "Mn":
-			final_text += character
-
-	return final_text.lower()
+from services.database_handler import SQL_Connector
+from services.library_service import LibaryService
+from services.music_player import MusicPlayer
+from widgets.widgets import *
+from utils import normalise_text, calculate_hash
 
 def make_bar(current: int, max: int, width: int) -> str:
 	if max != 0:
@@ -82,42 +67,6 @@ def render_volume_bar(volume: int) -> str:
 			f" {volume}%"
 		)
 
-# --- Music Table View --------------------------------------------------------
-
-class MusicTable(DataTable):
-
-	def on_mount(self):
-		self.cursor_type = "row"
-		self.zebra_stripes = True
-
-		self.add_column("ID", width=6)
-		self.add_column("Title", width=35)
-		self.add_column("Artist", width=15)
-		self.add_column("Album", width=15)
-		self.add_column("Genres", width=15)
-		self.add_column("Duration", width=8)
-	
-	def set_songs(self, songs):
-		self.clear()
-
-		for idx, song in enumerate(songs):
-			minutes = int((song["duration_ms"] / 1000) / 60)
-			seconds = int((song["duration_ms"] / 1000) % 60)
-			song_duration = "{}:{:02d}".format(minutes, seconds)
-			self.add_row(song["id"], song["title"], song["artist"], song["album"], song["genres"], song_duration, key=str(idx))
-
-# --- Playlist Button Widget --------------------------------------------------
-
-class PlaylistButton(Static):
-
-	def __init__(self, id: int, playlist_name: str) -> None:
-		super().__init__()
-		self.playlist_name = playlist_name
-		self.playlist_id = id
-
-	def compose(self) -> ComposeResult:
-		yield Button("{}".format(self.playlist_name), id="btn-playlist-{}".format(self.playlist_id), classes="playlist-btn")
-
 # --- Main Application --------------------------------------------------------
 
 class TerminalJukeBox(App):
@@ -135,26 +84,20 @@ class TerminalJukeBox(App):
 
 	def __init__(self):
 		super().__init__()
-		self.sql_db_connector = SQL_Connector()
-		self.all_songs = self.sql_db_connector.get_all_songs()
-		self.playlists = self.sql_db_connector.get_all_playlists()
+		self.library_service = LibaryService()
+		self.music_player = MusicPlayer()
+		self.all_songs = self.library_service.get_all_songs()
+		self.playlists = self.library_service.get_playlists()
 		self.playlist_songs_active = []
 		self.playlist_songs_view = []
 		self.playlist_name = self.playlists[0]["playlist_name"] if len(self.playlists) > 0 else None
 		self.playlist_id = self.playlists[0]["id"] if len(self.playlists) > 0 else 0
 		self.current_tab = ""
 		self.play_all_songs = True	# All songs library or specific playlist to play
-		self.volume = 40
 		self.btn_num_pressed = 0
 
-		self.song_idx = -1
-		self.is_playing = False
-		self.current_position = 0
-		self.duration = 0
-
-		self.playback = Playback()
-		self.playback.set_volume(self.volume / 100)
-		self.progress_bar = make_progress_bar_timer(self.current_position, self.duration)
+		self.progress_bar = make_progress_bar_timer(self.music_player.get_current_song_position(),
+											  			self.music_player.get_song_duration())
 
 	def on_mount(self) -> None:
 		music_table = self.query_one("#music-table", MusicTable)
@@ -174,60 +117,60 @@ class TerminalJukeBox(App):
 		self.next_song()
 
 	def load_songs(self) -> None:
-		self.all_songs = self.sql_db_connector.get_all_songs()
+		self.all_songs = self.library_service.get_all_songs()
 
 	def load_playlist_view(self) -> None:
 		if self.playlist_name != None:
-			self.playlist_songs_view = self.sql_db_connector.get_songs_in_playlist(self.playlist_name)
+			self.playlist_songs_view = self.library_service.get_playlist_songs(self.playlist_name)
 	
 	def update_progress(self) -> None:
-		if self.is_playing:
-			self.current_position += 1
-			if self.current_position > self.duration:
+		if self.music_player.get_is_playing():
+			self.music_player.update_position()
+			if self.music_player.get_current_song_position() > self.music_player.get_song_duration():
 				self.next_song()
 				
-			self.progress_bar = make_progress_bar_timer(self.current_position, self.duration)
+			self.progress_bar = make_progress_bar_timer(self.music_player.get_current_song_position(),
+											   self.music_player.get_song_duration())
 			self.query_one("#progress-bar-song", Static).update(self.progress_bar)
 
 	def load_song(self) -> None:
-		self.current_position = 0
-		curr_song = self.all_songs[self.song_idx] if self.play_all_songs else self.playlist_songs_active[self.song_idx]
+		song_idx = self.music_player.get_song_idx()
+		curr_song = self.all_songs[song_idx] if self.play_all_songs else self.playlist_songs_active[song_idx]
+		self.music_player.load_song(curr_song)
 
-		self.playback.load_file(curr_song["file_path"])
-		self.duration = int(curr_song["duration_ms"] / 1000)
-		
 		self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(curr_song["title"]))
 		self.query_one("#lbl-artist", Label).update(curr_song["artist"])
 
-		if self.is_playing:
+		if self.music_player.get_is_playing():
 			btn = self.query_one("#btn-play-pause", Button)
 			btn.label = "\u23f8 Pause"
-			self.playback.play()
+			self.music_player.play()
 		
-		self.progress_bar = make_progress_bar_timer(self.current_position, self.duration)
+		self.progress_bar = make_progress_bar_timer(self.music_player.get_current_song_position(),
+											  self.music_player.get_song_duration())
 		self.query_one("#progress-bar-song", Static).update(self.progress_bar)
 
 	def previous_song(self) -> None:
 		if len(self.all_songs) > 0:
-			self.song_idx -= 1
-			if self.song_idx < 0:
+			self.music_player.prev_song_idx()
+			if self.music_player.get_song_idx() < 0:
 				if self.play_all_songs:
-					self.song_idx = len(self.all_songs) - 1
+					self.music_player.set_song_idx(len(self.all_songs) - 1)
 				else:
-					self.song_idx = len(self.playlist_songs_active) - 1
+					self.music_player.set_song_idx(len(self.playlist_songs_active) - 1)
 			self.load_song()
 
 	def next_song(self) -> None:
 		if len(self.all_songs) > 0:
-			self.song_idx += 1
-			if self.song_idx >= len(self.all_songs) and self.play_all_songs:
-				self.song_idx = 0
-			elif self.song_idx >= len(self.playlist_songs_active) and not self.play_all_songs:
-				self.song_idx = 0
+			self.music_player.next_song_idx()
+			if self.music_player.get_song_idx() >= len(self.all_songs) and self.play_all_songs:
+				self.music_player.reset_song_idx()
+			elif self.music_player.get_song_idx() >= len(self.playlist_songs_active) and not self.play_all_songs:
+				self.music_player.reset_song_idx()
 			self.load_song()
 
 	def update_volume_bar(self):
-		self.query_one("#volume-bar", Static).update(render_volume_bar(self.volume))
+		self.query_one("#volume-bar", Static).update(render_volume_bar(self.music_player.get_volume()))
 
 	def compose(self) -> ComposeResult:
 		yield Header()
@@ -319,18 +262,18 @@ class TerminalJukeBox(App):
 	def music_table_row_selected(self, event: DataTable.RowSelected) -> None:
 		song_id = event.row_key.value
 
-		self.song_idx = int(song_id)
+		self.music_player.set_song_idx(int(song_id))
 		self.play_all_songs = True
-		self.is_playing = True
+		self.music_player.set_play()
 		self.load_song()
 
 	@on(DataTable.RowSelected, "#songs-playlist-table")
 	def songs_playlist_table_row_selected(self, event: DataTable.RowSelected) -> None:
 		song_id = event.row_key.value
 
-		self.song_idx = int(song_id)
+		self.music_player.set_song_idx(int(song_id))
 		self.play_all_songs = False
-		self.is_playing = True
+		self.music_player.set_play()
 		self.playlist_songs_active = self.playlist_songs_view
 		self.load_song()
 
@@ -347,9 +290,9 @@ class TerminalJukeBox(App):
 				btn = self.query_one("#btn-play-pause", Button)
 				btn.label = "\u23f8 Pause"
 				self.play_all_songs = False
-				self.song_idx = 0
-				self.is_playing = True
-				self.playlist_songs_active = self.sql_db_connector.get_songs_in_playlist(self.playlist_name)
+				self.music_player.reset_song_idx()
+				self.music_player.set_play()
+				self.playlist_songs_active = self.library_service.get_playlist_songs(self.playlist_name)
 				self.load_song()
 		else:
 			self.playlist_name = playlist_widget.playlist_name
@@ -365,16 +308,14 @@ class TerminalJukeBox(App):
 
 	@on(Button.Pressed, "#btn-play-pause")
 	def pressed_play_pause_song(self) -> None:
-		self.is_playing = not self.is_playing
-
 		btn = self.query_one("#btn-play-pause", Button)
-		if self.is_playing:
-			btn.label = "\u23f8 Pause"
-			self.playback.play()
-			self.playback.seek(self.current_position)
-		else:
+		if self.music_player.get_is_playing():
+			self.music_player.pause()
 			btn.label = "\u25B6 Play"
-			self.playback.pause()
+		else:
+			self.music_player.play()
+			btn.label = "\u23f8 Pause"
+		
 		self.btn_num_pressed = 0
 
 	@on(Button.Pressed, "#btn-prev")
@@ -388,17 +329,11 @@ class TerminalJukeBox(App):
 	# --- Action Key Bindings -----------------------------------------------
 
 	def action_volume_up(self) -> None:
-		self.volume = min(100, self.volume + 5)
-
-		self.playback.set_volume(self.volume / 100)
-
+		self.music_player.increase_volume(5)
 		self.update_volume_bar()
 
 	def action_volume_down(self) -> None:
-		self.volume = max(0, self.volume - 5)
-
-		self.playback.set_volume(self.volume / 100)
-
+		self.music_player.decrease_volume(5)
 		self.update_volume_bar()
 
 # --- Entry Point -------------------------------------------------------------
