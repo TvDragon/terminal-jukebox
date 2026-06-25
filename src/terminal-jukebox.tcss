@@ -144,3 +144,35 @@ Label {
 #volume-control {
     align: right middle;
 }
+
+/* --- Folder Dialog --- */
+
+#scan-folders-widget, #folder-dialog, #delete-popup {
+    background: #32302F;
+    border: round #B8BB26;
+    padding: 2 4;
+    min-width: 35;
+    max-width: 75;
+    height: auto;
+    max-height: 25;
+}
+
+#music-folders, #folder-tree {
+    min-height: 10;
+    max-height: 15;
+    padding: 1 0;
+}
+
+.dialog-buttons {
+    layout: horizontal;
+    height: auto;
+    align: center middle;
+}
+
+.dialog-buttons Button {
+    margin: 0 2 0 0;
+}
+
+#file-popup-title {
+    text-align: center;
+}

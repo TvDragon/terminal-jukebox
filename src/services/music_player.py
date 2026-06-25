@@ -1,5 +1,7 @@
 from just_playback import Playback
 
+import os
+
 class MusicPlayer:
 	def __init__(self):
 		self.playback = Playback()
@@ -35,13 +37,18 @@ class MusicPlayer:
 
 	def stop_play(self) -> None:
 		self.is_playing = False
+		self.playback.stop()
 
 	def pause(self) -> None:
 		self.playback.pause()
 		self.is_playing = False
 
+	def reset_position(self) -> None:
+		self.current_position = 0
+
 	def update_position(self) -> None:
-		self.current_position += 1
+		if self.is_playing:
+			self.current_position += 1
 
 	def get_is_playing(self) -> None:
 		return self.is_playing
@@ -69,5 +76,9 @@ class MusicPlayer:
 	
 	def load_song(self, song) -> None:
 		self.current_position = 0
-		self.playback.load_file(song["file_path"])
-		self.duration = int(song["duration_ms"] / 1000)
+		if os.path.isfile(song["file_path"]):
+			self.playback.load_file(song["file_path"])
+			self.duration = int(song["duration_ms"] / 1000)
+			return
+
+		raise FileNotFoundError("File does not exist: {}".format(song["file_path"]))

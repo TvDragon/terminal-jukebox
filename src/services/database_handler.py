@@ -55,12 +55,21 @@ class SQL_Connector:
 		success = self.execute("""CREATE TABLE SONGS_PLAYLISTS(
 			song_id						INTEGER,
 			playlist_id					INTEGER,
-			FOREIGN KEY(song_id)		REFERENCES SONGS(id),
-			FOREIGN KEY(playlist_id)	REFERENCES PLAYLISTS(id)
+			FOREIGN KEY(song_id)		REFERENCES SONGS(id) ON DELETE CASCADE,
+			FOREIGN KEY(playlist_id)	REFERENCES PLAYLISTS(id) ON DELETE CASCADE
 		)""")
+		# ON DELETE CASCADE will automatically delete the corresponding row in the child table
+		# when the row in the parent table is deleted.
 
 		if not success:
 			return
+		
+		# Create a table for folders to scan music from
+		success = self.execute("""CREATE TABLE FOLDERS(
+			id				INTEGER PRIMARY KEY AUTOINCREMENT,
+			folder_path		TEXT	UNIQUE,
+			is_checked		INTEGER
+		)""")
 
 		self.commit()
 
@@ -119,6 +128,34 @@ class SQL_Connector:
 		
 		self.commit()
 		return True
+	
+	def remove_songs_from_folder(self, file_path: str) -> bool:
+
+		sql_query = """
+			DELETE FROM SONGS
+			WHERE file_path
+			LIKE ?
+		"""
+
+		success = self.execute(sql_query, (file_path + '%',))
+
+		if not success:
+			return False
+		
+		self.commit()
+		return True
+	
+	def check_song_exists(self, file_hash: str) -> bool:
+		sql_query = """
+			SELECT * FROM SONGS
+			WHERE file_hash=?
+		"""
+
+		self.execute(sql_query, (file_hash,))
+
+		song = self.db_cursor.fetchone()
+
+		return song != None
 
 	def add_playlist(self, playlist_name: str, is_auto_playlist: int) -> bool:
 		
@@ -242,3 +279,74 @@ class SQL_Connector:
 		self.execute(sql_query, (song_id, playlist_id))
 		
 		return self.db_cursor.fetchone() is not None
+	
+	def add_folder(self, folder_path: str, is_checked: int) -> bool:
+
+		sql_query = """
+			INSERT INTO FOLDERS (folder_path, is_checked)
+			VALUES (?, ?)
+		"""
+
+		success = self.execute(sql_query, (folder_path, is_checked))
+
+		if not success:
+			return False
+		
+		self.commit()
+		return True
+
+	def modify_check_folder(self, folder_path: str, is_checked: int) -> bool:
+
+		sql_query = """
+			UPDATE FOLDERS
+			SET is_checked=?
+			WHERE folder_path=?
+			"""
+
+		success = self.execute(sql_query, (is_checked, folder_path))
+
+		if not success:
+			return False
+
+		self.commit()
+		return True
+	
+	def get_folders(self) -> list:
+
+		sql_query = """
+			SELECT * FROM FOLDERS
+		"""
+
+		self.execute(sql_query)
+
+		all_folders = self.db_cursor.fetchall()
+
+		return all_folders
+	
+	def check_folder_exists(self, folder_path: str) -> bool:
+
+		sql_query = """
+			SELECT * FROM FOLDERS
+			WHERE folder_path=?
+		"""
+
+		self.execute(sql_query, (folder_path,))
+
+		folder = self.db_cursor.fetchone()
+
+		return folder != None
+	
+	def remove_folder(self, folder_path: str) -> bool:
+
+		sql_query = """
+			DELETE FROM FOLDERS
+			WHERE folder_path=?
+			"""
+
+		success = self.execute(sql_query, (folder_path,))
+
+		if not success:
+			return False
+
+		self.commit()
+		return True

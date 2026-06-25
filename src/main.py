@@ -10,7 +10,6 @@ from textual.containers import (
 	VerticalScroll
 )
 from textual_slider import Slider
-from textual.screen import ModalScreen
 from textual.suggester import Suggester
 from textual.widgets import (
 	Button,
@@ -32,8 +31,9 @@ from textual.widgets.selection_list import Selection
 from services.database_handler import SQL_Connector
 from services.library_service import LibaryService
 from services.music_player import MusicPlayer
-from widgets.widgets import *
-from utils import normalise_text, calculate_hash
+from widgets.widgets import MusicTable, PlaylistButton
+from widgets.popups import ScanFoldersWidget, DeleteFilePopup
+from utils import normalise_text
 
 def make_bar(current: int, max: int, width: int) -> str:
 	if max != 0:
@@ -122,6 +122,13 @@ class TerminalJukeBox(App):
 	def load_playlist_view(self) -> None:
 		if self.playlist_name != None:
 			self.playlist_songs_view = self.library_service.get_playlist_songs(self.playlist_name)
+
+	def stop_and_reset(self) -> None:
+		self.music_player.reset_position()
+		self.music_player.stop_play()
+		self.progress_bar = make_progress_bar_timer(self.music_player.get_current_song_position(),
+											   self.music_player.get_song_duration())
+		self.query_one("#progress-bar-song", Static).update(self.progress_bar)
 	
 	def update_progress(self) -> None:
 		if self.music_player.get_is_playing():
@@ -133,22 +140,54 @@ class TerminalJukeBox(App):
 											   self.music_player.get_song_duration())
 			self.query_one("#progress-bar-song", Static).update(self.progress_bar)
 
-	def load_song(self) -> None:
+	def load_song(self, view: str = "") -> None:
 		song_idx = self.music_player.get_song_idx()
-		curr_song = self.all_songs[song_idx] if self.play_all_songs else self.playlist_songs_active[song_idx]
-		self.music_player.load_song(curr_song)
+		curr_song = None
+		if self.play_all_songs:
+			if len(self.all_songs) > 0:
+				curr_song = self.all_songs[song_idx]
+		elif len(self.playlist_songs_active) > 0:
+			curr_song = self.playlist_songs_active[song_idx]
 
-		self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(curr_song["title"]))
-		self.query_one("#lbl-artist", Label).update(curr_song["artist"])
+		try:
+			if curr_song != None:
+				self.music_player.load_song(curr_song)
+				self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(curr_song["title"]))
+				self.query_one("#lbl-artist", Label).update(curr_song["artist"])
 
-		if self.music_player.get_is_playing():
-			btn = self.query_one("#btn-play-pause", Button)
-			btn.label = "\u23f8 Pause"
-			self.music_player.play()
-		
-		self.progress_bar = make_progress_bar_timer(self.music_player.get_current_song_position(),
-											  self.music_player.get_song_duration())
-		self.query_one("#progress-bar-song", Static).update(self.progress_bar)
+				if self.music_player.get_is_playing():
+					btn = self.query_one("#btn-play-pause", Button)
+					btn.label = "\u23f8 Pause"
+					self.music_player.play()
+				
+				self.progress_bar = make_progress_bar_timer(self.music_player.get_current_song_position(),
+													self.music_player.get_song_duration())
+				self.query_one("#progress-bar-song", Static).update(self.progress_bar)
+			else:
+				self.stop_and_reset()
+		except FileNotFoundError as e:
+			async def delete_song(confirmed: bool) -> None:
+				if confirmed:
+					self.library_service.delete_song(curr_song["id"])
+					if self.play_all_songs and len(self.play_all_songs) > 0:
+						self.all_songs.pop(song_idx)
+						music_table = self.query_one("#music-table", MusicTable)
+						await music_table.clear_songs()
+						self.all_songs = self.library_service.get_all_songs()
+						music_table.set_songs(self.all_songs)
+					elif not self.play_all_songs:
+						if view == "playlist-view":
+							if len(self.playlist_songs_view) > 0:
+								self.playlist_songs_view.pop(song_idx)
+								playlist_table = self.query_one("#songs-playlist-table", MusicTable)
+								playlist_table.set_songs(self.playlist_songs_view)
+						elif len(self.playlist_songs_active) > 0:
+								self.load_playlist_view()
+								self.playlist_songs_active = self.playlist_songs_view
+								playlist_table = self.query_one("#songs-playlist-table", MusicTable)
+								playlist_table.set_songs(self.playlist_songs_view)
+
+			self.push_screen(DeleteFilePopup(str(e)), delete_song)
 
 	def previous_song(self) -> None:
 		if len(self.all_songs) > 0:
@@ -180,6 +219,7 @@ class TerminalJukeBox(App):
 			with Container(id="top-box"):
 				with Horizontal(id="top-bar", classes="main-border"):
 					yield Button("Scan", id="btn-scan")
+					yield Button("Create Playlist", id="btn-create-playlist")
 					yield Input(
 						placeholder="Search for music...",
 						id="music-search-input"
@@ -236,6 +276,28 @@ class TerminalJukeBox(App):
 			table.set_songs(self.playlist_songs_view)
 		self.current_tab = tab_id
 
+	# --- Scan Music Folders Button -------------------------------------------
+
+	@on(Button.Pressed, "#btn-scan")
+	def pressed_scan_files(self) -> None:
+
+		async def scan_folders(new_music_folders: (list | None)) -> None:
+			if new_music_folders:
+				for folder in new_music_folders:
+					if folder["checked"] == True:
+						if not self.library_service.check_folder_exists(folder["folder_path"]):
+							self.library_service.add_music_folder(folder["folder_path"])
+						self.library_service.add_songs_from_folder(folder["folder_path"])
+					elif self.library_service.check_folder_exists(folder["folder_path"]) and folder["checked"] == False:
+						self.library_service.remove_music_folder(folder["folder_path"])
+				
+				music_table = self.query_one("#music-table", MusicTable)
+				await music_table.clear_songs()
+				self.all_songs = self.library_service.get_all_songs()
+				music_table.set_songs(self.all_songs)
+
+		self.push_screen(ScanFoldersWidget(self.library_service.get_music_folders()), scan_folders)
+
 	# --- Search Bar ----------------------------------------------------------
 	
 	@on(Input.Changed, "#music-search-input")
@@ -275,7 +337,7 @@ class TerminalJukeBox(App):
 		self.play_all_songs = False
 		self.music_player.set_play()
 		self.playlist_songs_active = self.playlist_songs_view
-		self.load_song()
+		self.load_song("playlist-view")
 
 	# --- Music Control Buttons -----------------------------------------------
 	
@@ -286,14 +348,14 @@ class TerminalJukeBox(App):
 		self.query_one("#btn-playlist-{}".format(self.playlist_id), Button).remove_class("active-playlist-btn")
 		event.button.add_class("active-playlist-btn")
 		if self.playlist_name == playlist_widget.playlist_name:
-			if self.btn_num_pressed == 1:
+			if self.btn_num_pressed == 1 and len(self.playlist_songs_view) > 0:
 				btn = self.query_one("#btn-play-pause", Button)
 				btn.label = "\u23f8 Pause"
 				self.play_all_songs = False
 				self.music_player.reset_song_idx()
 				self.music_player.set_play()
 				self.playlist_songs_active = self.library_service.get_playlist_songs(self.playlist_name)
-				self.load_song()
+				self.load_song("playlist-view")
 		else:
 			self.playlist_name = playlist_widget.playlist_name
 			self.playlist_id = playlist_widget.playlist_id
