@@ -95,7 +95,7 @@ class ScanFoldersWidget(ModalScreen[list | None]):
 		async def selected_folders(folder_path: str | None) -> None:
 			if folder_path is not None:
 				if os.path.isdir(folder_path):
-					if str(folder_path) in self.music_folders:
+					if any(str(folder_path) in folder["folder_path"] for folder in self.music_folders):
 						return
 
 					if folder_path not in self.temp_added_folders:
