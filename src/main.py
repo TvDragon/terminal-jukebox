@@ -95,6 +95,7 @@ class TerminalJukeBox(App):
 		self.current_tab = ""
 		self.play_all_songs = True	# All songs library or specific playlist to play
 		self.btn_num_pressed = 0
+		self.mouse_click = None
 
 		self.progress_bar = make_progress_bar_timer(self.music_player.get_current_song_position(),
 											  			self.music_player.get_song_duration())
@@ -322,73 +323,84 @@ class TerminalJukeBox(App):
 
 	@on(DataTable.RowSelected, "#music-table")
 	def music_table_row_selected(self, event: DataTable.RowSelected) -> None:
-		song_id = event.row_key.value
+		if self.mouse_click == 1:
+			song_id = event.row_key.value
+			self.music_player.set_song_idx(int(song_id))
 
-		self.music_player.set_song_idx(int(song_id))
-		self.play_all_songs = True
-		self.music_player.set_play()
-		self.load_song()
+			self.play_all_songs = True
+			self.music_player.set_play()
+			self.load_song()
 
 	@on(DataTable.RowSelected, "#songs-playlist-table")
 	def songs_playlist_table_row_selected(self, event: DataTable.RowSelected) -> None:
-		song_id = event.row_key.value
+		if self.mouse_click == 1:
+			song_id = event.row_key.value
+			self.music_player.set_song_idx(int(song_id))
 
-		self.music_player.set_song_idx(int(song_id))
-		self.play_all_songs = False
-		self.music_player.set_play()
-		self.playlist_songs_active = self.playlist_songs_view
-		self.load_song("playlist-view")
+			self.play_all_songs = False
+			self.music_player.set_play()
+			self.playlist_songs_active = self.playlist_songs_view
+			self.load_song("playlist-view")
 
 	# --- Music Control Buttons -----------------------------------------------
 	
 	@on(Button.Pressed, ".playlist-btn")
 	def pressed_btn_playlist(self, event: Button.Pressed) -> None:
-		playlist_widget = event.button.parent
+		if self.mouse_click == 1:
+			playlist_widget = event.button.parent
 
-		self.query_one("#btn-playlist-{}".format(self.playlist_id), Button).remove_class("active-playlist-btn")
-		event.button.add_class("active-playlist-btn")
-		if self.playlist_name == playlist_widget.playlist_name:
-			if self.btn_num_pressed == 1 and len(self.playlist_songs_view) > 0:
-				btn = self.query_one("#btn-play-pause", Button)
-				btn.label = "\u23f8 Pause"
-				self.play_all_songs = False
-				self.music_player.reset_song_idx()
-				self.music_player.set_play()
-				self.playlist_songs_active = self.library_service.get_playlist_songs(self.playlist_name)
-				self.load_song("playlist-view")
-		else:
-			self.playlist_name = playlist_widget.playlist_name
-			self.playlist_id = playlist_widget.playlist_id
-			self.load_playlist_view()
+			self.query_one("#btn-playlist-{}".format(self.playlist_id), Button).remove_class("active-playlist-btn")
+			event.button.add_class("active-playlist-btn")
+			if self.playlist_name == playlist_widget.playlist_name:
+				if self.btn_num_pressed == 1 and len(self.playlist_songs_view) > 0:
+					btn = self.query_one("#btn-play-pause", Button)
+					btn.label = "\u23f8 Pause"
+					self.play_all_songs = False
+					self.music_player.reset_song_idx()
+					self.music_player.set_play()
+					self.playlist_songs_active = self.library_service.get_playlist_songs(self.playlist_name)
+					self.load_song("playlist-view")
+			else:
+				self.playlist_name = playlist_widget.playlist_name
+				self.playlist_id = playlist_widget.playlist_id
+				self.load_playlist_view()
 
-			playlist_table = self.query_one("#songs-playlist-table", MusicTable)
-			playlist_table.set_songs(self.playlist_songs_view)
-			self.btn_num_pressed = 0
-		self.btn_num_pressed += 1
+				playlist_table = self.query_one("#songs-playlist-table", MusicTable)
+				playlist_table.set_songs(self.playlist_songs_view)
+				self.btn_num_pressed = 0
+			self.btn_num_pressed += 1
 
 	# --- Music Control Buttons -----------------------------------------------
 
 	@on(Button.Pressed, "#btn-play-pause")
 	def pressed_play_pause_song(self) -> None:
-		btn = self.query_one("#btn-play-pause", Button)
-		if self.music_player.get_is_playing():
-			self.music_player.pause()
-			btn.label = "\u25B6 Play"
-		else:
-			self.music_player.play()
-			btn.label = "\u23f8 Pause"
-		
-		self.btn_num_pressed = 0
+		if self.mouse_click == 1:
+			btn = self.query_one("#btn-play-pause", Button)
+			if self.music_player.get_is_playing():
+				self.music_player.pause()
+				btn.label = "\u25B6 Play"
+			else:
+				self.music_player.play()
+				btn.label = "\u23f8 Pause"
+			
+			self.btn_num_pressed = 0
 
 	@on(Button.Pressed, "#btn-prev")
 	def pressed_prev_song(self) -> None:
-		self.previous_song()
+		if self.mouse_click == 1:
+			self.previous_song()
 
 	@on(Button.Pressed, "#btn-next")
 	def pressed_next_song(self) -> None:
-		self.next_song()
+		if self.mouse_click == 1:
+			self.next_song()
 
-	# --- Action Key Bindings -----------------------------------------------
+	# --- Mouse Click ---------------------------------------------------------
+	
+	def on_mouse_down(self, event: events.MouseDown) -> None:
+		self.mouse_click = event.button
+
+	# --- Action Key Bindings -------------------------------------------------
 
 	def action_volume_up(self) -> None:
 		self.music_player.increase_volume(5)
