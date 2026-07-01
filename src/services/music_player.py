@@ -1,7 +1,5 @@
 from just_playback import Playback
 
-import os
-
 class MusicPlayer:
 	def __init__(self):
 		self.playback = Playback()
@@ -76,9 +74,5 @@ class MusicPlayer:
 	
 	def load_song(self, song) -> None:
 		self.current_position = 0
-		if os.path.isfile(song["file_path"]):
-			self.playback.load_file(song["file_path"])
-			self.duration = int(song["duration_ms"] / 1000)
-			return
-
-		raise FileNotFoundError("File does not exist: {}".format(song["file_path"]))
+		self.playback.load_file(song["file_path"])
+		self.duration = int(song["duration_ms"] / 1000)

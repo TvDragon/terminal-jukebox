@@ -35,6 +35,8 @@ from widgets.widgets import MusicTable, PlaylistButton
 from widgets.popups import ScanFoldersWidget, DeleteFilePopup
 from utils import normalise_text
 
+import os
+
 def make_bar(current: int, max: int, width: int) -> str:
 	if max != 0:
 		ratio = current / max
@@ -150,8 +152,8 @@ class TerminalJukeBox(App):
 		elif len(self.playlist_songs_active) > 0:
 			curr_song = self.playlist_songs_active[song_idx]
 
-		try:
-			if curr_song != None:
+		if curr_song != None:
+			if os.path.isfile(curr_song["file_path"]):
 				self.music_player.load_song(curr_song)
 				self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(curr_song["title"]))
 				self.query_one("#lbl-artist", Label).update(curr_song["artist"])
@@ -164,31 +166,31 @@ class TerminalJukeBox(App):
 				self.progress_bar = make_progress_bar_timer(self.music_player.get_current_song_position(),
 													self.music_player.get_song_duration())
 				self.query_one("#progress-bar-song", Static).update(self.progress_bar)
-			else:
-				self.stop_and_reset()
-		except FileNotFoundError as e:
-			async def delete_song(confirmed: bool) -> None:
-				if confirmed:
-					self.library_service.delete_song(curr_song["id"])
-					if self.play_all_songs and len(self.play_all_songs) > 0:
-						self.all_songs.pop(song_idx)
-						music_table = self.query_one("#music-table", MusicTable)
-						await music_table.clear_songs()
-						self.all_songs = self.library_service.get_all_songs()
-						music_table.set_songs(self.all_songs)
-					elif not self.play_all_songs:
-						if view == "playlist-view":
-							if len(self.playlist_songs_view) > 0:
-								self.playlist_songs_view.pop(song_idx)
-								playlist_table = self.query_one("#songs-playlist-table", MusicTable)
-								playlist_table.set_songs(self.playlist_songs_view)
-						elif len(self.playlist_songs_active) > 0:
-								self.load_playlist_view()
-								self.playlist_songs_active = self.playlist_songs_view
-								playlist_table = self.query_one("#songs-playlist-table", MusicTable)
-								playlist_table.set_songs(self.playlist_songs_view)
+			else:			
+				async def delete_song(confirmed: bool) -> None:
+					if confirmed:
+						self.library_service.delete_song(curr_song["id"])
+						if self.play_all_songs and len(self.play_all_songs) > 0:
+							self.all_songs.pop(song_idx)
+							music_table = self.query_one("#music-table", MusicTable)
+							await music_table.clear_songs()
+							self.all_songs = self.library_service.get_all_songs()
+							music_table.set_songs(self.all_songs)
+						elif not self.play_all_songs:
+							if view == "playlist-view":
+								if len(self.playlist_songs_view) > 0:
+									self.playlist_songs_view.pop(song_idx)
+									playlist_table = self.query_one("#songs-playlist-table", MusicTable)
+									playlist_table.set_songs(self.playlist_songs_view)
+							elif len(self.playlist_songs_active) > 0:
+									self.load_playlist_view()
+									self.playlist_songs_active = self.playlist_songs_view
+									playlist_table = self.query_one("#songs-playlist-table", MusicTable)
+									playlist_table.set_songs(self.playlist_songs_view)
 
-			self.push_screen(DeleteFilePopup(str(e)), delete_song)
+				self.push_screen(DeleteFilePopup("File does not exist: {}".format(curr_song["file_path"])), delete_song)
+		else:
+			self.stop_and_reset()
 
 	def previous_song(self) -> None:
 		if len(self.all_songs) > 0:
