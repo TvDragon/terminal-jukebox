@@ -170,7 +170,7 @@ class TerminalJukeBox(App):
 				async def delete_song(confirmed: bool) -> None:
 					if confirmed:
 						self.library_service.delete_song(curr_song["id"])
-						if self.play_all_songs and len(self.play_all_songs) > 0:
+						if self.play_all_songs and len(self.all_songs) > 0:
 							self.all_songs.pop(song_idx)
 							music_table = self.query_one("#music-table", MusicTable)
 							await music_table.clear_songs()
