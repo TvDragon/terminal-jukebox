@@ -26,11 +26,11 @@ class MusicTable(DataTable):
 	def set_songs(self, songs):
 		self.clear()
 
-		for idx, song in enumerate(songs):
+		for song in songs:
 			minutes = int((song["duration_ms"] / 1000) / 60)
 			seconds = int((song["duration_ms"] / 1000) % 60)
 			song_duration = "{}:{:02d}".format(minutes, seconds)
-			self.add_row(song["id"], song["title"], song["artist"], song["album"], song["genres"], song_duration, key=str(idx))
+			self.add_row(song["id"], song["title"], song["artist"], song["album"], song["genres"], song_duration, key=str(song["id"]))
 
 # --- Playlist Button Widget --------------------------------------------------
 
