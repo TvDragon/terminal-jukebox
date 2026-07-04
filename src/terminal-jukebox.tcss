@@ -145,6 +145,32 @@ Label {
     align: right middle;
 }
 
+/* --- Confirm Dialog --- */
+
+#confirm-dialog {
+    background: #32302F;
+    border: round #B8BB26;
+    padding: 2 4;
+    width: 50;
+    height: auto;
+    max-height: 16;
+}
+
+#confirm-dialog Static {
+    color: #c9d1d9;
+    margin-bottom: 1;
+}
+
+#confirm-dialog .dialog-buttons {
+    layout: horizontal;
+    height: auto;
+    align: center middle;
+}
+
+#confirm-dialog .dialog-buttons Button {
+    margin: 0 2 0 0;
+}
+
 /* --- Folder Dialog --- */
 
 #scan-folders-widget, #folder-dialog, #delete-popup {
@@ -175,4 +201,16 @@ Label {
 
 #file-popup-title {
     text-align: center;
+}
+
+/* --- Song Sub-menu --- */
+
+#song-sub-menu {
+    background: #32302F;
+    border: round #B8BB26;
+    padding: 2 4;
+    min-width: 35;
+    max-width: 40;
+    height: auto;
+    max-height: 25;
 }

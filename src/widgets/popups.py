@@ -5,17 +5,53 @@ from textual.containers import (
 	Horizontal,
 	VerticalScroll
 )
+from textual.events import Click
+from textual.widgets.option_list import Option
 from textual.screen import ModalScreen
 from textual.widgets import (
 	Button,
 	Checkbox,
 	DirectoryTree,
+	OptionList,
+	SelectionList,
 	Static,
 )
+from textual.widgets.selection_list import Selection
 
+from models.model import SongAction, SongMenuResult
 from utils import calculate_hash
 
 import os
+
+# --- Confirm Dialog ----------------------------------------------------------
+
+class ConfirmDialog(ModalScreen[bool]):
+	"""A modal confirmation dialog."""
+
+	DEFAULT_CSS = """
+	ConfirmDialog {
+		align: center middle;
+	}
+	"""
+
+	def __init__(self, message: str) -> None:
+		super().__init__()
+		self.message = message
+
+	def compose(self) -> ComposeResult:
+		with Container(id="confirm-dialog"):
+			yield Static(self.message)
+			with Horizontal(classes="dialog-buttons"):
+				yield Button("Confirm", variant="success", id="confirm-yes")
+				yield Button("Cancel", variant="error", id="confirm-no")
+
+	@on(Button.Pressed, "#confirm-yes")
+	def on_confirm(self) -> None:
+		self.dismiss(True)
+
+	@on(Button.Pressed, "#confirm-no")
+	def on_cancel(self) -> None:
+		self.dismiss(False)
 
 # --- Music Folders Dialog ----------------------------------------------------
 
@@ -153,3 +189,103 @@ class DeleteFilePopup(ModalScreen[bool]):
 	@on(Button.Pressed, "#btn-delete-cancel")
 	def on_cancel(self) -> None:
 		self.dismiss(False)
+
+# --- Playlist Sub-menu ----------------------------------------------------
+
+class PlaylistSubMenu(ModalScreen[list]):
+
+	DEFAULT_CSS = """
+	PlaylistSubMenu {
+		align: center middle;
+	}
+	"""
+
+	def __init__(self, playlists: list) -> None:
+		super().__init__()
+		self.playlists = playlists
+
+	def on_mount(self) -> None:
+		selection_list = self.query_one("#playlists-ls", SelectionList)
+		selection_list.border_title = "Playlists"
+		for playlist in self.playlists:
+			if not playlist["is_auto_playlist"]:
+				# TODO: Show checked if it is already in that playlist
+				selection_list.add_option((playlist["playlist_name"], playlist["id"]))
+
+	def compose(self) -> ComposeResult:
+		with Container(id="folder-dialog"):
+			yield SelectionList[int](id="playlists-ls")
+			with Horizontal(classes="dialog-buttons"):
+				yield Button("Add", variant="success", id="add-to-playlist-yes")
+				yield Button("Cancel", variant="error", id="add-to-playlist-no")
+
+	@on(Button.Pressed, "#add-to-playlist-yes")
+	def on_confirm(self) -> (str | None):
+		sel = self.query_one("#playlists-ls", SelectionList)
+		selected = list(sel.selected)
+		self.dismiss(selected)
+
+	@on(Button.Pressed, "#add-to-playlist-no")
+	def on_cancel(self) -> None:
+		self.dismiss([])	
+
+# --- Song Sub-menu -----------------------------------------------------
+
+class SongSubMenu(ModalScreen[SongMenuResult | None]):
+
+	DEFAULT_CSS = """
+	SongSubMenu {
+		align: center middle;
+	}
+	"""
+
+	def __init__(self, song_id: int, song_title: str, playlists: list) -> None:
+		super().__init__()
+		self.song_id = song_id
+		self.song_title = song_title
+		self.playlists = playlists
+
+	def compose(self) -> ComposeResult:
+		with Container(id="song-sub-menu"):
+			yield OptionList(
+				Option("Play Now", id="opt-play"),
+				Option("Edit", id="opt-edit"),
+				Option("Include in Playlist ▶", id="opt-playlists"),
+				Option("Delete", id="opt-delete"),
+				id="options-sub-menu"
+			)
+
+	@on(OptionList.OptionSelected, "#options-sub-menu")
+	def option_selected(self, event: OptionList.OptionSelected) -> None:
+		option = event.option_list.get_option_at_index(event.option_index)
+
+		if option.id == "opt-play":
+			self.dismiss(SongMenuResult(SongAction.PLAY))
+		elif option.id == "opt-edit":
+			pass
+		elif option.id == "opt-playlists":
+			def add_to_playlist(results: list) -> None:
+				if len(results) != 0:
+					self.dismiss(SongMenuResult(SongAction.ADD_TO_PLAYLIST, results))
+				else:
+					self.dismiss(None)
+
+			self.app.push_screen(PlaylistSubMenu(self.playlists), add_to_playlist)
+		elif option.id == "opt-delete":
+			def confirm_delete(confirmed: bool) -> None:
+				if confirmed:
+					self.dismiss(SongMenuResult(SongAction.DELETE))
+				else:
+					self.dismiss(None)
+
+			self.app.push_screen(ConfirmDialog("Are you sure you want to delete this song?"), confirm_delete)
+
+	@on(Click)
+	def click_background(self, event: Click) -> None:
+		song_submenu = self.query_one("#song-sub-menu")
+
+		# Ignore clicks inside this popup
+		if song_submenu in event.widget.ancestors_with_self:
+			return
+
+		self.dismiss(None)

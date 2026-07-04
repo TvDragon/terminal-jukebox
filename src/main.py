@@ -28,11 +28,12 @@ from textual.widgets import (
 )
 from textual.widgets.selection_list import Selection
 
+from models.model import SongAction, SongMenuResult
 from services.database_handler import SQL_Connector
 from services.library_service import LibaryService
 from services.music_player import MusicPlayer
 from widgets.widgets import MusicTable, PlaylistButton
-from widgets.popups import ScanFoldersWidget, DeleteFilePopup
+from widgets.popups import ScanFoldersWidget, DeleteFilePopup, SongSubMenu
 from utils import normalise_text
 
 import os
@@ -346,24 +347,91 @@ class TerminalJukeBox(App):
 
 	@on(DataTable.RowSelected, "#music-table")
 	def music_table_row_selected(self, event: DataTable.RowSelected) -> None:
+		song_id = int(event.row_key.value)
+		idx = 0
 		if self.mouse_click == 1:
-			song_id = event.row_key.value
-			self.music_player.set_song_idx(int(song_id))
-
 			self.play_all_songs = True
-			self.music_player.set_play()
-			self.load_song()
+			self.play_selected_song(song_id)
+		elif self.mouse_click == 3:
+			curr_song = None
+			for i, song in enumerate(self.all_songs):
+				if song["id"] == song_id:
+					curr_song = song
+					idx = i
+					break
+			playlists = self.library_service.get_playlists()
+			
+			async def sub_menu_task(result: SongMenuResult | None):
+				if result:
+					if result.action == SongAction.PLAY:
+						self.play_all_songs = True
+						self.play_selected_song(song_id)
+					elif result.action == SongAction.ADD_TO_PLAYLIST:
+						playlist_ids = result.payload
+						for playlist_id in playlist_ids:
+							# TODO: Check if already in playlist before adding
+							self.library_service.add_song_to_playlist(song_id, playlist_id)
+					elif result.action == SongAction.DELETE:
+						await self.delete_selected_song(curr_song, idx, song_id)
+
+			self.push_screen(SongSubMenu(curr_song["id"], curr_song["title"], playlists), sub_menu_task)
 
 	@on(DataTable.RowSelected, "#songs-playlist-table")
 	def songs_playlist_table_row_selected(self, event: DataTable.RowSelected) -> None:
+		song_id = int(event.row_key.value)
+		idx = 0
 		if self.mouse_click == 1:
-			song_id = event.row_key.value
-			self.music_player.set_song_idx(int(song_id))
-
 			self.play_all_songs = False
-			self.music_player.set_play()
 			self.playlist_songs_active = self.playlist_songs_view
-			self.load_song("playlist-view")
+			self.play_selected_song(song_id, "playlist-view")
+		elif self.mouse_click == 3:
+			curr_song = None
+			for i, song in enumerate(self.playlist_songs_view):
+				if song["id"] == song_id:
+					curr_song = song
+					idx = i
+					break
+			playlists = self.library_service.get_playlists()
+			
+			async def sub_menu_task(result: SongMenuResult | None):
+				if result:
+					if result.action == SongAction.PLAY:
+						self.play_all_songs = False
+						self.playlist_songs_active = self.playlist_songs_view
+						self.play_selected_song(song_id, "playlist-view")
+					elif result.action == SongAction.DELETE:
+						# TODO: Change to just remove song from playlist instead of deleting the song
+						await self.delete_selected_song(curr_song, idx, song_id)	
+
+			self.push_screen(SongSubMenu(curr_song["id"], curr_song["title"], playlists), sub_menu_task)
+
+	def play_selected_song(self, song_id: int, view: str ="") -> None:
+		self.music_player.set_song_idx(song_id)
+		self.music_player.set_play()
+		self.load_song(view)
+
+	async def delete_selected_song(self, curr_song, idx: int, song_id: int) -> None:
+		self.library_service.delete_song(curr_song["id"])
+		if len(self.all_songs) > 0:
+			self.all_songs.pop(idx)
+			music_table = self.query_one("#music-table", MusicTable)
+			await music_table.clear_songs()
+			self.all_songs = self.library_service.get_all_songs()
+			music_table.set_songs(self.all_songs)
+
+		if len(self.playlist_songs_active) > 0:
+			for i, song in enumerate(self.playlist_songs_active):
+				if song["id"] == song_id:
+					self.playlist_songs_active.pop(i)
+					break
+
+		if len(self.playlist_songs_view) > 0:
+			for i, song in enumerate(self.playlist_songs_view):
+				if song["id"] == song_id:
+					self.playlist_songs_view.pop(i)
+					break
+			playlist_table = self.query_one("#songs-playlist-table", MusicTable)
+			playlist_table.set_songs(self.playlist_songs_view)
 
 	# --- Music Control Buttons -----------------------------------------------
 	

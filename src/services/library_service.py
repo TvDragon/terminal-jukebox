@@ -43,6 +43,9 @@ class LibaryService:
 	def check_song_exists(self, file_hash: str) -> bool:
 		return self.sql_db_connector.check_song_exists(file_hash)
 	
+	def add_song_to_playlist(self, song_id: int, playlist_id: int) -> None:
+		self.sql_db_connector.add_song_to_playlist(song_id, playlist_id)
+	
 	def add_songs_from_folder(self, path) -> None:
 		all_files = os.listdir(f"{path}")
 
