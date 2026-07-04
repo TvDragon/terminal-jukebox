@@ -63,12 +63,6 @@ class MusicPlayer:
 	def set_song_idx(self, idx: int) -> None:
 		self.song_idx = idx
 
-	def prev_song_idx(self) -> None:
-		self.song_idx -= 1
-
-	def next_song_idx(self) -> None:
-		self.song_idx += 1
-
 	def get_song_idx(self) -> int:
 		return self.song_idx
 	

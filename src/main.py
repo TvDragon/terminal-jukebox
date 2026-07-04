@@ -148,9 +148,15 @@ class TerminalJukeBox(App):
 		curr_song = None
 		if self.play_all_songs:
 			if len(self.all_songs) > 0:
-				curr_song = self.all_songs[song_idx]
+				for song in self.all_songs:
+					if song["id"] == song_idx:
+						curr_song = song
+						break
 		elif len(self.playlist_songs_active) > 0:
-			curr_song = self.playlist_songs_active[song_idx]
+			for song in self.playlist_songs_active:
+				if song["id"] == song_idx:
+					curr_song = song
+					break
 
 		if curr_song != None:
 			if os.path.isfile(curr_song["file_path"]):
@@ -171,7 +177,10 @@ class TerminalJukeBox(App):
 					if confirmed:
 						self.library_service.delete_song(curr_song["id"])
 						if self.play_all_songs and len(self.all_songs) > 0:
-							self.all_songs.pop(song_idx)
+							for idx, song in enumerate(self.all_songs):
+								if song["id"] == song_idx:
+									self.all_songs.pop(idx)
+									break
 							music_table = self.query_one("#music-table", MusicTable)
 							await music_table.clear_songs()
 							self.all_songs = self.library_service.get_all_songs()
@@ -179,7 +188,10 @@ class TerminalJukeBox(App):
 						elif not self.play_all_songs:
 							if view == "playlist-view":
 								if len(self.playlist_songs_view) > 0:
-									self.playlist_songs_view.pop(song_idx)
+									for idx, song in enumerate(self.playlist_songs_view):
+										if song["id"] == song_idx:
+											self.playlist_songs_view.pop(idx)
+											break
 									playlist_table = self.query_one("#songs-playlist-table", MusicTable)
 									playlist_table.set_songs(self.playlist_songs_view)
 							elif len(self.playlist_songs_active) > 0:
@@ -193,22 +205,31 @@ class TerminalJukeBox(App):
 			self.stop_and_reset()
 
 	def previous_song(self) -> None:
-		if len(self.all_songs) > 0:
-			self.music_player.prev_song_idx()
-			if self.music_player.get_song_idx() < 0:
-				if self.play_all_songs:
-					self.music_player.set_song_idx(len(self.all_songs) - 1)
-				else:
-					self.music_player.set_song_idx(len(self.playlist_songs_active) - 1)
+		if self.play_all_songs and len(self.all_songs) > 0:
+			idx = self.music_player.get_song_idx()
+			for i, song in enumerate(self.all_songs):
+				if song["id"] == idx:
+					self.music_player.set_song_idx(self.all_songs[i-1]["id"])
 			self.load_song()
-
+		elif len(self.playlist_songs_active) > 0:
+			idx = self.music_player.get_song_idx()
+			for i, song in enumerate(self.playlist_songs_active):
+				if song["id"] == idx:
+					self.music_player.set_song_idx(self.playlist_songs_active[i-1]["id"])
+			self.load_song()
+			
 	def next_song(self) -> None:
-		if len(self.all_songs) > 0:
-			self.music_player.next_song_idx()
-			if self.music_player.get_song_idx() >= len(self.all_songs) and self.play_all_songs:
-				self.music_player.reset_song_idx()
-			elif self.music_player.get_song_idx() >= len(self.playlist_songs_active) and not self.play_all_songs:
-				self.music_player.reset_song_idx()
+		if self.play_all_songs and len(self.all_songs) > 0:
+			idx = self.music_player.get_song_idx()
+			for i, song in enumerate(self.all_songs):
+				if song["id"] == idx:
+					self.music_player.set_song_idx(self.all_songs[(i+1) % len(self.all_songs)]["id"])
+			self.load_song()
+		elif len(self.playlist_songs_active) > 0:
+			idx = self.music_player.get_song_idx()
+			for i, song in enumerate(self.playlist_songs_active):
+				if song["id"] == idx:
+					self.music_player.set_song_idx(self.playlist_songs_active[(i+1) % len(self.playlist_songs_active)]["id"])
 			self.load_song()
 
 	def update_volume_bar(self):
