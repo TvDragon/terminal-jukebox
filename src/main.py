@@ -379,9 +379,9 @@ class TerminalJukeBox(App):
 					btn = self.query_one("#btn-play-pause", Button)
 					btn.label = "\u23f8 Pause"
 					self.play_all_songs = False
-					self.music_player.reset_song_idx()
+					self.playlist_songs_active = self.playlist_songs_view
+					self.music_player.set_song_idx(self.playlist_songs_active[0]["id"])
 					self.music_player.set_play()
-					self.playlist_songs_active = self.library_service.get_playlist_songs(self.playlist_name)
 					self.load_song("playlist-view")
 			else:
 				self.playlist_name = playlist_widget.playlist_name
