@@ -4,10 +4,19 @@ from enum import Enum
 class SongAction(Enum):
 	PLAY = "play"
 	EDIT = "edit"
-	ADD_TO_PLAYLIST = "playlist"
+	UPDATE_TO_PLAYLIST = "playlist"
 	DELETE = "delete"
+	REMOVE = "remove"
 
 @dataclass
 class SongMenuResult:
 	action: SongAction
 	payload: object | None = None
+
+@dataclass
+class SongPlaylists:
+	playlist_id: int
+	playlist_name: str
+	song_id: int
+	in_playlist: bool
+	is_auto_playlist: bool

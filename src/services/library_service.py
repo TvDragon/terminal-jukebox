@@ -45,6 +45,17 @@ class LibaryService:
 	
 	def add_song_to_playlist(self, song_id: int, playlist_id: int) -> None:
 		self.sql_db_connector.add_song_to_playlist(song_id, playlist_id)
+
+	def remove_song_from_playlist(self, song_id: int, playlist_id: int) -> None:
+		self.sql_db_connector.remove_song_from_playlist(song_id, playlist_id)
+
+	def get_playlists_for_song(self, song_id: int, playlists: list) -> dict:
+		results_dict = {}
+		
+		for playlist in playlists:
+			in_playlist = self.sql_db_connector.is_song_in_playlist(song_id, playlist["id"])
+			results_dict[playlist["id"]] = in_playlist
+		return results_dict
 	
 	def add_songs_from_folder(self, path) -> None:
 		all_files = os.listdir(f"{path}")
