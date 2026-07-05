@@ -1,3 +1,4 @@
+from pathlib import Path
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import (
@@ -66,7 +67,7 @@ class FolderDialog(ModalScreen[str | None]):
 	def compose(self) -> ComposeResult:
 		with Container(id="folder-dialog"):
 			yield Static("Folders...")
-			yield DirectoryTree("./", id="folder-tree")
+			yield DirectoryTree(Path("/"), id="folder-tree")
 			with Horizontal(classes="dialog-buttons"):
 				yield Button("Add", variant="success", id="btn-folder-yes")
 				yield Button("Cancel", variant="error", id="btn-folder-cancel")
