@@ -1,0 +1,16 @@
+cffi==2.0.0
+just_playback==0.1.8
+linkify-it-py==2.1.0
+markdown-it-py==4.2.0
+mdit-py-plugins==0.6.1
+mdurl==0.1.2
+mutagen==1.47.0
+platformdirs==4.9.6
+pycparser==3.0
+Pygments==2.20.0
+rich==15.0.0
+textual==8.2.7
+textual-slider==0.2.0
+tinytag==2.2.1
+typing_extensions==4.15.0
+uc-micro-py==2.0.0
