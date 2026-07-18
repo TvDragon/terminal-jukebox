@@ -37,6 +37,12 @@ class LibaryService:
 			  		duration_ms: int, file_path: str, file_hash: str) -> None:
 		self.sql_db_connector.add_song(title, artist, album, genres, duration_ms, file_path, file_hash)
 
+	def get_song(self, id: int) -> object:
+		return self.sql_db_connector.get_song(id)
+
+	def edit_song(self, id: int, title: str, artist: str, album: str, genres: str) -> None:
+		self.sql_db_connector.edit_song(id, title, artist, album, genres)
+
 	def delete_song(self, song_id: int) -> None:
 		self.sql_db_connector.remove_song(song_id)
 

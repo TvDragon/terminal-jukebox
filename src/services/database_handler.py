@@ -114,6 +114,34 @@ class SQL_Connector:
 		self.commit()
 		return True
 	
+	def get_song(self, id: int) -> object:
+
+		sql_query = """
+			SELECT * FROM SONGS
+			WHERE id=?
+		"""
+
+		self.execute(sql_query, (id,))
+
+		song = self.db_cursor.fetchone()
+		return song
+
+	def edit_song(self, id: int, title: str, artist: str, album: str, genres: str) -> bool:
+
+		sql_query = """
+			UPDATE SONGS
+			SET title=?, artist=?, album=?, genres=?
+			WHERE id=?
+		"""
+
+		success = self.execute(sql_query, (title, artist, album, genres, id))
+
+		if not success:
+			return False
+		
+		self.commit()
+		return True
+
 	def remove_song(self, song_id) -> bool:
 
 		sql_query = """
@@ -168,7 +196,7 @@ class SQL_Connector:
 
 		if not success:
 			return False
-		
+
 		self.commit()
 		return True
 	

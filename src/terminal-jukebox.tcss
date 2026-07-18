@@ -214,3 +214,19 @@ Label {
     height: auto;
     max-height: 25;
 }
+
+/* --- Edit Song Info --- */
+
+#song-editor {
+    background: #32302F;
+    border: round #B8BB26;
+    padding: 2;
+    min-width: 40;
+    max-width: 60;
+    height: auto;
+    max-height: 30;
+}
+
+.group-song-edit Input {
+    width: 1fr;
+}

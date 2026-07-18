@@ -20,3 +20,11 @@ class SongPlaylists:
 	song_id: int
 	in_playlist: bool
 	is_auto_playlist: bool
+
+@dataclass
+class SongInfo:
+	id:	int
+	title:	str
+	artist:	str
+	album:	str
+	genres:	str
