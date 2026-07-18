@@ -115,36 +115,36 @@ class TerminalJukeBox(App):
 		for playlist in self.playlists:
 			playlists_widget.mount(PlaylistButton(playlist["id"], playlist["playlist_name"]))
 
-		self.set_interval(1, self.update_progress)	# Update progress bar every second
-		self.update_volume_bar()
+		self.set_interval(1, self._update_progress)	# Update progress bar every second
+		self._update_volume_bar()
 
-		self.next_song()
+		self._next_song()
 
-	def load_songs(self) -> None:
+	def _load_songs(self) -> None:
 		self.all_songs = self.library_service.get_all_songs()
 
-	def load_playlist_view(self) -> None:
+	def _load_playlist_view(self) -> None:
 		if self.playlist_name != None:
 			self.playlist_songs_view = self.library_service.get_playlist_songs(self.playlist_name)
 
-	def stop_and_reset(self) -> None:
+	def _stop_and_reset(self) -> None:
 		self.music_player.reset_position()
 		self.music_player.stop_play()
 		self.progress_bar = make_progress_bar_timer(self.music_player.get_current_song_position(),
 											   self.music_player.get_song_duration())
 		self.query_one("#progress-bar-song", Static).update(self.progress_bar)
 	
-	def update_progress(self) -> None:
+	def _update_progress(self) -> None:
 		if self.music_player.get_is_playing():
 			self.music_player.update_position()
 			if self.music_player.get_current_song_position() > self.music_player.get_song_duration():
-				self.next_song()
+				self._next_song()
 				
 			self.progress_bar = make_progress_bar_timer(self.music_player.get_current_song_position(),
 											   self.music_player.get_song_duration())
 			self.query_one("#progress-bar-song", Static).update(self.progress_bar)
 
-	def load_song(self, view: str = "") -> None:
+	def _load_song(self, view: str = "") -> None:
 		song_idx = self.music_player.get_song_idx()
 		curr_song = None
 		if self.play_all_songs:
@@ -196,44 +196,44 @@ class TerminalJukeBox(App):
 									playlist_table = self.query_one("#songs-playlist-table", MusicTable)
 									playlist_table.set_songs(self.playlist_songs_view)
 							elif len(self.playlist_songs_active) > 0:
-									self.load_playlist_view()
+									self._load_playlist_view()
 									self.playlist_songs_active = self.playlist_songs_view
 									playlist_table = self.query_one("#songs-playlist-table", MusicTable)
 									playlist_table.set_songs(self.playlist_songs_view)
 
 				self.push_screen(DeleteFilePopup("File does not exist: {}".format(curr_song["file_path"])), delete_song)
 		else:
-			self.stop_and_reset()
+			self._stop_and_reset()
 
-	def previous_song(self) -> None:
+	def _previous_song(self) -> None:
 		if self.play_all_songs and len(self.all_songs) > 0:
 			idx = self.music_player.get_song_idx()
 			for i, song in enumerate(self.all_songs):
 				if song["id"] == idx:
 					self.music_player.set_song_idx(self.all_songs[i-1]["id"])
-			self.load_song()
+			self._load_song()
 		elif len(self.playlist_songs_active) > 0:
 			idx = self.music_player.get_song_idx()
 			for i, song in enumerate(self.playlist_songs_active):
 				if song["id"] == idx:
 					self.music_player.set_song_idx(self.playlist_songs_active[i-1]["id"])
-			self.load_song()
+			self._load_song()
 			
-	def next_song(self) -> None:
+	def _next_song(self) -> None:
 		if self.play_all_songs and len(self.all_songs) > 0:
 			idx = self.music_player.get_song_idx()
 			for i, song in enumerate(self.all_songs):
 				if song["id"] == idx:
 					self.music_player.set_song_idx(self.all_songs[(i+1) % len(self.all_songs)]["id"])
-			self.load_song()
+			self._load_song()
 		elif len(self.playlist_songs_active) > 0:
 			idx = self.music_player.get_song_idx()
 			for i, song in enumerate(self.playlist_songs_active):
 				if song["id"] == idx:
 					self.music_player.set_song_idx(self.playlist_songs_active[(i+1) % len(self.playlist_songs_active)]["id"])
-			self.load_song()
+			self._load_song()
 
-	def update_volume_bar(self):
+	def _update_volume_bar(self):
 		self.query_one("#volume-bar", Static).update(render_volume_bar(self.music_player.get_volume()))
 
 	def compose(self) -> ComposeResult:
@@ -293,11 +293,11 @@ class TerminalJukeBox(App):
 
 		if tab_id == "tab-music":
 			table = self.query_one("#music-table", MusicTable)
-			self.load_songs()
+			self._load_songs()
 			table.set_songs(self.all_songs)
 		elif tab_id == "tab-playlists":
 			table = self.query_one("#songs-playlist-table", MusicTable)
-			self.load_playlist_view()
+			self._load_playlist_view()
 			table.set_songs(self.playlist_songs_view)
 		self.current_tab = tab_id
 
@@ -351,7 +351,7 @@ class TerminalJukeBox(App):
 		idx = 0
 		if self.mouse_click == 1:
 			self.play_all_songs = True
-			self.play_selected_song(song_id)
+			self._play_selected_song(song_id)
 		elif self.mouse_click == 3:
 			curr_song = None
 			for i, song in enumerate(self.all_songs):
@@ -374,7 +374,7 @@ class TerminalJukeBox(App):
 				if result:
 					if result.action == SongAction.PLAY:
 						self.play_all_songs = True
-						self.play_selected_song(song_id)
+						self._play_selected_song(song_id)
 					elif result.action == SongAction.UPDATE_TO_PLAYLIST:
 						options = result.payload
 						for playlist in playlists:
@@ -396,7 +396,7 @@ class TerminalJukeBox(App):
 		if self.mouse_click == 1:
 			self.play_all_songs = False
 			self.playlist_songs_active = self.playlist_songs_view
-			self.play_selected_song(song_id, "playlist-view")
+			self._play_selected_song(song_id, "playlist-view")
 		elif self.mouse_click == 3:
 			curr_song = None
 			for song in self.playlist_songs_view:
@@ -419,7 +419,7 @@ class TerminalJukeBox(App):
 					if result.action == SongAction.PLAY:
 						self.play_all_songs = False
 						self.playlist_songs_active = self.playlist_songs_view
-						self.play_selected_song(song_id, "playlist-view")
+						self._play_selected_song(song_id, "playlist-view")
 					elif result.action == SongAction.UPDATE_TO_PLAYLIST:
 						options = result.payload
 						for playlist in playlists:
@@ -435,10 +435,10 @@ class TerminalJukeBox(App):
 
 			self.push_screen(SongSubMenu(curr_song["id"], curr_song["title"], song_playlists, False), sub_menu_task)
 
-	def play_selected_song(self, song_id: int, view: str ="") -> None:
+	def _play_selected_song(self, song_id: int, view: str ="") -> None:
 		self.music_player.set_song_idx(song_id)
 		self.music_player.set_play()
-		self.load_song(view)
+		self._load_song(view)
 
 	async def delete_selected_song(self, curr_song, idx: int) -> None:
 		self.library_service.delete_song(curr_song["id"])
@@ -484,11 +484,11 @@ class TerminalJukeBox(App):
 					self.playlist_songs_active = self.playlist_songs_view
 					self.music_player.set_song_idx(self.playlist_songs_active[0]["id"])
 					self.music_player.set_play()
-					self.load_song("playlist-view")
+					self._load_song("playlist-view")
 			else:
 				self.playlist_name = playlist_widget.playlist_name
 				self.playlist_id = playlist_widget.playlist_id
-				self.load_playlist_view()
+				self._load_playlist_view()
 
 				playlist_table = self.query_one("#songs-playlist-table", MusicTable)
 				playlist_table.set_songs(self.playlist_songs_view)
@@ -513,12 +513,12 @@ class TerminalJukeBox(App):
 	@on(Button.Pressed, "#btn-prev")
 	def pressed_prev_song(self) -> None:
 		if self.mouse_click == 1:
-			self.previous_song()
+			self._previous_song()
 
 	@on(Button.Pressed, "#btn-next")
 	def pressed_next_song(self) -> None:
 		if self.mouse_click == 1:
-			self.next_song()
+			self._next_song()
 
 	# --- Mouse Click ---------------------------------------------------------
 	
@@ -529,11 +529,11 @@ class TerminalJukeBox(App):
 
 	def action_volume_up(self) -> None:
 		self.music_player.increase_volume(5)
-		self.update_volume_bar()
+		self._update_volume_bar()
 
 	def action_volume_down(self) -> None:
 		self.music_player.decrease_volume(5)
-		self.update_volume_bar()
+		self._update_volume_bar()
 
 # --- Entry Point -------------------------------------------------------------
 
