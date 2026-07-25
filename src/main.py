@@ -383,7 +383,7 @@ class TerminalJukeBox(App):
 						self._play_selected_song(song_id)
 					if result.action == SongAction.EDIT:
 						song = result.payload
-						self.library_service.edit_song(song.id, song.title, song.artist, song.album, song.genres)
+						self.library_service.edit_song(song.id, song.title, song.artist, song.album, song.genres, song.file_path)
 						music_table = self.query_one("#music-table", MusicTable)
 						self.all_songs[idx] = self.library_service.get_song(song.id)
 						music_table.update_cell(RowKey(song.id), music_table.columns["title"].key, song.title)
@@ -405,7 +405,8 @@ class TerminalJukeBox(App):
 
 			self.push_screen(SongSubMenu(SongInfo(curr_song["id"], curr_song["title"],
 										 curr_song["artist"], curr_song["album"],
-										 curr_song["genres"]), song_playlists, True), sub_menu_task)
+										 curr_song["genres"], curr_song["file_path"]),
+										 song_playlists, True), sub_menu_task)
 
 	@on(DataTable.RowSelected, "#songs-playlist-table")
 	def songs_playlist_table_row_selected(self, event: DataTable.RowSelected) -> None:

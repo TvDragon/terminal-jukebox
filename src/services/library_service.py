@@ -40,8 +40,17 @@ class LibaryService:
 	def get_song(self, id: int) -> object:
 		return self.sql_db_connector.get_song(id)
 
-	def edit_song(self, id: int, title: str, artist: str, album: str, genres: str) -> None:
-		self.sql_db_connector.edit_song(id, title, artist, album, genres)
+	def edit_song(self, id: int, title: str, artist: str, album: str, genres: str, file_path: str) -> None:
+		success = self.sql_db_connector.edit_song(id, title, artist, album, genres)
+
+		if success:
+			audio = EasyID3(file_path)
+			audio["title"] = title
+			audio["artist"] = artist
+			audio["album"] = album
+			ls_genres = genres.split(";")
+			audio["genre"] = ls_genres
+			audio.save(file_path)
 
 	def delete_song(self, song_id: int) -> None:
 		self.sql_db_connector.remove_song(song_id)

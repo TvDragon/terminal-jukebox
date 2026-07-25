@@ -28,3 +28,4 @@ class SongInfo:
 	artist:	str
 	album:	str
 	genres:	str
+	file_path: str
