@@ -34,7 +34,7 @@ from services.database_handler import SQL_Connector
 from services.library_service import LibaryService
 from services.music_player import MusicPlayer
 from widgets.widgets import MusicTable, PlaylistButton
-from widgets.popups import ScanFoldersWidget, DeleteFilePopup, SongSubMenu
+from widgets.popups import ScanFoldersWidget, DeleteFilePopup, SongSubMenu, LoadingScreen
 from utils import normalise_text
 
 import os
@@ -316,17 +316,27 @@ class TerminalJukeBox(App):
 
 		def scan_folders(new_music_folders: (list | None)) -> None:
 			if new_music_folders:
-				for folder in new_music_folders:
-					if folder["checked"] == True:
-						if not self.library_service.check_folder_exists(folder["folder_path"]):
-							self.library_service.add_music_folder(folder["folder_path"])
-						self.library_service.add_songs_from_folder(folder["folder_path"])
-					elif self.library_service.check_folder_exists(folder["folder_path"]) and folder["checked"] == False:
-						self.library_service.remove_music_folder(folder["folder_path"])
-				
-				self._update_music_table()
+				self._scan_selected_folders(new_music_folders)
 
 		self.push_screen(ScanFoldersWidget(self.library_service.get_music_folders()), scan_folders)
+
+	@work(thread=True)
+	def _scan_selected_folders(self, new_music_folders) -> None:
+		self.call_from_thread(self.push_screen, LoadingScreen())
+
+		for folder in new_music_folders:
+			if folder["checked"] == True:
+				if not self.library_service.check_folder_exists(folder["folder_path"]):
+					self.library_service.add_music_folder(folder["folder_path"])
+				self.library_service.add_songs_from_folder(folder["folder_path"])
+			elif self.library_service.check_folder_exists(folder["folder_path"]) and folder["checked"] == False:
+				self.library_service.remove_music_folder(folder["folder_path"])
+		
+		self.call_from_thread(self._scan_finished)
+
+	def _scan_finished(self) -> None:
+		self._update_music_table()
+		self.pop_screen()
 
 	# --- Search Bar ----------------------------------------------------------
 	

@@ -16,6 +16,7 @@ from textual.widgets import (
 	DirectoryTree,
 	Input,
 	Label,
+	LoadingIndicator,
 	OptionList,
 	SelectionList,
 	Static,
@@ -26,6 +27,25 @@ from models.model import SongAction, SongMenuResult, SongInfo
 from utils import calculate_hash
 
 import os
+
+# --- Loading Screen Popup ----------------------------------------------------------
+
+class LoadingScreen(ModalScreen):
+	"""A modal confirmation dialog."""
+
+	DEFAULT_CSS = """
+	LoadingScreen {
+		align: center middle;
+	}
+	"""
+
+	def __init__(self) -> None:
+		super().__init__()
+
+	def compose(self) -> ComposeResult:
+		with Vertical():
+			yield Label("Loading Data")
+			yield LoadingIndicator()
 
 # --- Confirm Dialog ----------------------------------------------------------
 

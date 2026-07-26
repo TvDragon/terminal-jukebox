@@ -10,6 +10,10 @@
 	border: round #B8BB26;
 }
 
+ModalScreen {
+	hatch: right $primary-background;
+}
+
 /* --- Header & Footer --- */
 
 Header {
@@ -229,4 +233,18 @@ Label {
 
 .group-song-edit Input {
     width: 1fr;
+}
+
+/* --- Loading Screen Popup --- */
+
+LoadingScreen Vertical {
+    background: #32302F;
+    border: round #B8BB26;
+    width: auto;
+    height: auto;
+    padding: 0 5;
+
+    LoadingIndicator {
+        height: 1;
+    }
 }
