@@ -2,6 +2,7 @@ from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 
+from models.model import Node
 from services.database_handler import SQL_Connector
 
 from utils import calculate_hash
@@ -75,14 +76,26 @@ class LibaryService:
 	def add_songs_from_folder(self, path) -> None:
 		all_files = os.listdir(f"{path}")
 
-		for filename in all_files:
-			curr_path = f"{path}{filename}"
-			if filename.endswith(".mp3") or filename.endswith(".flac"):
+		visited = set()
+		stack = []
+		for file_path in all_files:
+			stack.append(Node(path, file_path))
+
+		while len(stack) > 0:
+			node = stack.pop()
+			curr_path = node.parent + node.name
+
+			if curr_path in visited:
+				continue
+
+			visited.add(curr_path)
+
+			if curr_path.endswith(".mp3") or curr_path.endswith(".flac"):
 				audio = EasyID3(curr_path)
 				audio_file = None
-				if filename.endswith(".flac"):
+				if curr_path.endswith(".flac"):
 					audio_file = FLAC(curr_path)
-				elif filename.endswith(".mp3"):
+				elif curr_path.endswith(".mp3"):
 					audio_file = MP3(curr_path)
 				
 				info = f"No Metadata: {curr_path}"
@@ -116,5 +129,7 @@ class LibaryService:
 					self.add_song(title, artist, album, genres, duration, file_path, file_hash)
 			else:
 				curr_path += "/"
-				if os.path.isdir(f"{curr_path}"):
-					self.add_songs_from_folder(curr_path)
+				if os.path.isdir(curr_path):
+					all_files = os.listdir(curr_path)
+					for file_path in all_files:
+						stack.append(Node(curr_path, file_path))

@@ -29,3 +29,8 @@ class SongInfo:
 	album:	str
 	genres:	str
 	file_path: str
+
+@dataclass
+class Node:
+	parent: str
+	name: str
