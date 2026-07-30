@@ -472,7 +472,7 @@ class TerminalJukeBox(App):
 
 			self.push_screen(SongSubMenu(SongInfo(curr_song["id"], curr_song["title"],
 										 curr_song["artist"], curr_song["album"],
-										 curr_song["genres"]), song_playlists, False), sub_menu_task)
+										 curr_song["genres"], curr_song["file_path"]), song_playlists, False), sub_menu_task)
 
 	def _play_selected_song(self, song_id: int, view: str ="") -> None:
 		self.music_player.set_song_idx(song_id)
