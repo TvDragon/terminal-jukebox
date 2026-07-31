@@ -207,9 +207,25 @@ Label {
     text-align: center;
 }
 
-/* --- Song Sub-menu --- */
+/* --- Playlists Submenu --- */
 
-#song-sub-menu {
+#playlists-submenu {
+    background: #32302F;
+    border: round #B8BB26;
+    padding: 2 4;
+    min-width: 25;
+    max-width: 55;
+    height: auto;
+    max-height: 25;
+}
+
+#playlists-ls {
+    margin: 1 0;
+}
+
+/* --- Song Submenu --- */
+
+#options-submenu {
     background: #32302F;
     border: round #B8BB26;
     padding: 2 4;

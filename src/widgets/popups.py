@@ -229,14 +229,15 @@ class PlaylistSubMenu(ModalScreen[dict | None]):
 		self.song_playlists = song_playlists
 
 	def on_mount(self) -> None:
+		playlist_submenu = self.query_one("#playlists-submenu", Container)
+		playlist_submenu.border_title = "Playlists"
 		selection_list = self.query_one("#playlists-ls", SelectionList)
-		selection_list.border_title = "Playlists"
 		for playlist in self.song_playlists:
 			if not playlist.is_auto_playlist:
 				selection_list.add_option((playlist.playlist_name, playlist.playlist_id, playlist.in_playlist))
 
 	def compose(self) -> ComposeResult:
-		with Container(id="folder-dialog"):
+		with Container(id="playlists-submenu"):
 			yield SelectionList[int](id="playlists-ls")
 			with Horizontal(classes="dialog-buttons"):
 				yield Button("Update", variant="success", id="update-to-playlist-yes")
@@ -271,17 +272,20 @@ class SongSubMenu(ModalScreen[SongMenuResult | None]):
 		self.song_playlists = song_playlists
 		self.is_from_library = is_from_library
 
-	def compose(self) -> ComposeResult:
-		with Container(id="song-sub-menu"):
-			yield OptionList(
-				Option("Play Now", id="opt-play"),
-				Option("Edit", id="opt-edit"),
-				Option("Include in Playlist ▶", id="opt-playlists"),
-				Option("Remove", id="opt-remove"),
-				id="options-sub-menu"
-			)
+	def on_mount(self) -> None:
+		song_submenu = self.query_one("#options-submenu", OptionList)
+		song_submenu.border_title = "Song Submenu"
 
-	@on(OptionList.OptionSelected, "#options-sub-menu")
+	def compose(self) -> ComposeResult:
+		yield OptionList(
+			Option("Play Now", id="opt-play"),
+			Option("Edit", id="opt-edit"),
+			Option("Include in Playlist ▶", id="opt-playlists"),
+			Option("Remove", id="opt-remove"),
+			id="options-submenu"
+		)
+
+	@on(OptionList.OptionSelected, "#options-submenu")
 	def option_selected(self, event: OptionList.OptionSelected) -> None:
 		option = event.option_list.get_option_at_index(event.option_index)
 
@@ -319,7 +323,7 @@ class SongSubMenu(ModalScreen[SongMenuResult | None]):
 
 	@on(Click)
 	def click_background(self, event: Click) -> None:
-		song_submenu = self.query_one("#song-sub-menu")
+		song_submenu = self.query_one("#options-submenu")
 
 		# Ignore clicks inside this popup
 		if song_submenu in event.widget.ancestors_with_self:
