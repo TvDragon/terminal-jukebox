@@ -333,7 +333,7 @@ class SongSubMenu(ModalScreen[SongMenuResult | None]):
 
 # --- Edit Song Info -----------------------------------------------------
 
-class EditSongInfo(ModalScreen[None]):
+class EditSongInfo(ModalScreen[SongInfo | None]):
 
 	DEFAULT_CSS = """
 	EditSongInfo {
@@ -377,19 +377,19 @@ class EditSongInfo(ModalScreen[None]):
 
 	@on(Input.Changed, "#edit-title-input")
 	def changed_title_input(self, event: Input.Changed) -> None:
-		self.song_info.title = event.value		
+		self.song_info.title = event.value
 
 	@on(Input.Changed, "#edit-artist-input")
 	def changed_artist_input(self, event: Input.Changed) -> None:
-		self.song_info.artist = event.value		
+		self.song_info.artist = event.value
 
 	@on(Input.Changed, "#edit-album-input")
 	def changed_album_input(self, event: Input.Changed) -> None:
-		self.song_info.album = event.value		
+		self.song_info.album = event.value
 
 	@on(Input.Changed, "#edit-genres-input")
 	def changed_genres_input(self, event: Input.Changed) -> None:
-		self.song_info.genres = event.value		
+		self.song_info.genres = event.value
 
 	@on(Button.Pressed, "#edit-save")
 	def on_save(self) -> None:
@@ -397,4 +397,4 @@ class EditSongInfo(ModalScreen[None]):
 
 	@on(Button.Pressed, "#edit-cancel")
 	def on_cancel(self) -> None:
-		self.dismiss(None)	
+		self.dismiss(None)
