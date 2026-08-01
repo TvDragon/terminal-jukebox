@@ -364,11 +364,33 @@ class TerminalJukeBox(App):
 	@on(DataTable.RowSelected, "#music-table")
 	def music_table_row_selected(self, event: DataTable.RowSelected) -> None:
 		song_id = int(event.row_key.value)
-		idx = 0
 		if self.mouse_click == 1:
 			self.play_all_songs = True
 			self._play_selected_song(song_id)
-		elif self.mouse_click == 3:
+		self.check_right_click_music_table(song_id)
+
+	@on(DataTable.RowSelected, "#songs-playlist-table")
+	def songs_playlist_table_row_selected(self, event: DataTable.RowSelected) -> None:
+		song_id = int(event.row_key.value)
+		if self.mouse_click == 1:
+			self.play_all_songs = False
+			self.playlist_songs_active = self.playlist_songs_view
+			self._play_selected_song(song_id, "playlist-view")
+		self.check_right_click_songs_playlist_table(song_id)
+
+	@on(DataTable.RowHighlighted, "#music-table")
+	def music_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+		song_id = int(event.row_key.value)
+		self.check_right_click_music_table(song_id)
+
+	@on(DataTable.RowHighlighted, "#songs-playlist-table")
+	def songs_playlist_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+		song_id = int(event.row_key.value)
+		self.check_right_click_songs_playlist_table(song_id)
+
+	def check_right_click_music_table(self, song_id: int) -> None:
+		idx = 0
+		if self.mouse_click == 3:
 			curr_song = None
 			for i, song in enumerate(self.all_songs):
 				if song["id"] == song_id:
@@ -418,14 +440,8 @@ class TerminalJukeBox(App):
 										 curr_song["genres"], curr_song["file_path"]),
 										 song_playlists, True), sub_menu_task)
 
-	@on(DataTable.RowSelected, "#songs-playlist-table")
-	def songs_playlist_table_row_selected(self, event: DataTable.RowSelected) -> None:
-		song_id = int(event.row_key.value)
-		if self.mouse_click == 1:
-			self.play_all_songs = False
-			self.playlist_songs_active = self.playlist_songs_view
-			self._play_selected_song(song_id, "playlist-view")
-		elif self.mouse_click == 3:
+	def check_right_click_songs_playlist_table(self, song_id: int) -> None:
+		if self.mouse_click == 3:
 			curr_song = None
 			for song in self.playlist_songs_view:
 				if song["id"] == song_id:
