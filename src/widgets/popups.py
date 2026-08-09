@@ -214,12 +214,12 @@ class DeleteFilePopup(ModalScreen[bool]):
 	def on_cancel(self) -> None:
 		self.dismiss(False)
 
-# --- Playlist Sub-menu ----------------------------------------------------
+# --- Add To Playlist Popup -------------------------------------------------------
 
-class PlaylistSubMenu(ModalScreen[dict | None]):
+class AddToPlaylistPopup(ModalScreen[dict | None]):
 
 	DEFAULT_CSS = """
-	PlaylistSubMenu {
+	AddToPlaylistPopup {
 		align: center middle;
 	}
 	"""
@@ -229,15 +229,15 @@ class PlaylistSubMenu(ModalScreen[dict | None]):
 		self.song_playlists = song_playlists
 
 	def on_mount(self) -> None:
-		playlist_submenu = self.query_one("#playlists-submenu", Container)
-		playlist_submenu.border_title = "Playlists"
+		add_to_playlist_popup = self.query_one("#add-to-playlist-popup", Container)
+		add_to_playlist_popup.border_title = "Playlists"
 		selection_list = self.query_one("#playlists-ls", SelectionList)
 		for playlist in self.song_playlists:
 			if not playlist.is_auto_playlist:
 				selection_list.add_option((playlist.playlist_name, playlist.playlist_id, playlist.in_playlist))
 
 	def compose(self) -> ComposeResult:
-		with Container(id="playlists-submenu"):
+		with Container(id="add-to-playlist-popup"):
 			yield SelectionList[int](id="playlists-ls")
 			with Horizontal(classes="dialog-buttons"):
 				yield Button("Update", variant="success", id="update-to-playlist-yes")
@@ -256,7 +256,7 @@ class PlaylistSubMenu(ModalScreen[dict | None]):
 	def on_cancel(self) -> None:
 		self.dismiss(None)	
 
-# --- Song Sub-menu -----------------------------------------------------
+# --- Song Sub-menu -----------------------------------------------------------
 
 class SongSubMenu(ModalScreen[SongMenuResult | None]):
 
@@ -306,7 +306,7 @@ class SongSubMenu(ModalScreen[SongMenuResult | None]):
 				else:
 					self.dismiss(None)
 
-			self.app.push_screen(PlaylistSubMenu(self.song_playlists), add_to_playlist)
+			self.app.push_screen(AddToPlaylistPopup(self.song_playlists), add_to_playlist)
 		elif option.id == "opt-remove":
 			def confirm_remove(confirmed: bool) -> None:
 				if confirmed and self.is_from_library:
