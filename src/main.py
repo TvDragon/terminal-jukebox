@@ -29,12 +29,12 @@ from textual.widgets import (
 )
 from textual.widgets.selection_list import Selection
 
-from models.model import SongAction, SongMenuResult, SongPlaylists, SongInfo
+from models.model import SongAction, SongMenuResult, SongPlaylists, SongInfo, PlaylistAction, PlaylistMenuResult
 from services.database_handler import SQL_Connector
 from services.library_service import LibaryService
 from services.music_player import MusicPlayer
 from widgets.widgets import MusicTable, PlaylistButton
-from widgets.popups import ScanFoldersWidget, DeleteFilePopup, SongSubMenu, LoadingScreen
+from widgets.popups import ScanFoldersWidget, DeleteFilePopup, SongSubMenu, LoadingScreen, NewPlaylistPopup, PlaylistSubMenu
 from utils import normalise_text
 
 import os
@@ -104,7 +104,7 @@ class TerminalJukeBox(App):
 		self.progress_bar = make_progress_bar_timer(self.music_player.get_current_song_position(),
 											  			self.music_player.get_song_duration())
 
-	def on_mount(self) -> None:
+	async def on_mount(self) -> None:
 		music_table = self.query_one("#music-table", MusicTable)
 		music_table.clear_songs()
 		music_table.set_songs(self.all_songs)
@@ -114,14 +114,21 @@ class TerminalJukeBox(App):
 		playlist_table.clear_songs()
 		playlist_table.set_songs(self.playlist_songs_view)
 
-		playlists_widget = self.query_one("#playlists", VerticalScroll)
-		for playlist in self.playlists:
-			playlists_widget.mount(PlaylistButton(playlist["id"], playlist["playlist_name"]))
+		await self._update_playlists_view()
 
 		self.set_interval(1, self._update_progress)	# Update progress bar every second
 		self._update_volume_bar()
 
 		self._next_song()
+
+	async def _update_playlists_view(self) -> None:
+		self.playlists = self.library_service.get_playlists()
+
+		playlists_widget = self.query_one("#playlists", VerticalScroll)
+		await playlists_widget.remove_children()
+
+		for playlist in self.playlists:
+			playlists_widget.mount(PlaylistButton(playlist["id"], playlist["playlist_name"]))
 
 	def _update_music_table(self) -> None:
 		music_table = self.query_one("#music-table", MusicTable)
@@ -338,6 +345,18 @@ class TerminalJukeBox(App):
 		self._update_music_table()
 		self.pop_screen()
 
+	# --- Create New Playlist Button -------------------------------------------
+
+	@on(Button.Pressed, "#btn-create-playlist")
+	def pressed_create_playlist(self) -> None:
+
+		async def create_new_playlist(result : (dict | None)) -> None:
+			if result:
+				self.library_service.add_playlist(result["playlist_name"], result["is_auto_playlist"])
+				await self._update_playlists_view()
+
+		self.push_screen(NewPlaylistPopup(), create_new_playlist)
+
 	# --- Search Bar ----------------------------------------------------------
 	
 	@on(Input.Changed, "#music-search-input")
@@ -524,11 +543,12 @@ class TerminalJukeBox(App):
 	# --- Music Control Buttons -----------------------------------------------
 	
 	@on(Button.Pressed, ".playlist-btn")
-	def pressed_btn_playlist(self, event: Button.Pressed) -> None:
+	async def pressed_btn_playlist(self, event: Button.Pressed) -> None:
+		playlist_widget = event.button.parent
 		if self.mouse_click == 1:
-			playlist_widget = event.button.parent
 
-			self.query_one("#btn-playlist-{}".format(self.playlist_id), Button).remove_class("active-playlist-btn")
+			if self.playlist_id != -1:
+				self.query_one("#btn-playlist-{}".format(self.playlist_id), Button).remove_class("active-playlist-btn")
 			event.button.add_class("active-playlist-btn")
 			if self.playlist_name == playlist_widget.playlist_name:
 				if self.btn_num_pressed == 1 and len(self.playlist_songs_view) > 0:
@@ -549,6 +569,24 @@ class TerminalJukeBox(App):
 				playlist_table.set_songs(self.playlist_songs_view)
 				self.btn_num_pressed = 0
 			self.btn_num_pressed += 1
+		elif self.mouse_click == 3:
+			playlist_id = playlist_widget.playlist_id
+			playlist_name = playlist_widget.playlist_name
+
+			async def sub_menu_task(result: PlaylistMenuResult | None):
+				if result:
+					if result.action == PlaylistAction.EDIT:
+						new_playlist_name = result.payload["playlist_name"]
+						self.library_service.update_playlist(playlist_id, new_playlist_name)
+						await self._update_playlists_view()
+					elif result.action == PlaylistAction.DELETE:
+						self.library_service.delete_playlist(playlist_id)	# CASCADE delete rows in SONGS_PLAYLISTS that have this playlist_id
+						await self._update_playlists_view()
+						if playlist_id == self.playlist_id:
+							self.playlist_id = -1
+
+			self.push_screen(PlaylistSubMenu(playlist_name), sub_menu_task)	
+			
 
 	# --- Music Control Buttons -----------------------------------------------
 

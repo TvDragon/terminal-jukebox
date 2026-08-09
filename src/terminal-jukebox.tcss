@@ -102,7 +102,7 @@ Tab.-active {
 /* --- Playlists Section --- */
 
 #playlists {
-    max-width: 20;
+    max-width: 22;
 }
 
 #playlists, #song-playlists {
@@ -249,6 +249,48 @@ Label {
 
 .group-song-edit Input {
     width: 1fr;
+}
+
+/* --- New Playlist Popup --- */
+
+#new-playlist-popup {
+    background: #32302F;
+    border: round #B8BB26;
+    padding: 2;
+    min-width: 40;
+    max-width: 60;
+    height: auto;
+    max-height: 20;
+}
+
+#playlist-name-input {
+    width: 1fr;
+}
+
+#autoplaylist-checkbox {
+    margin: 1 0;
+}
+
+/* --- Playlist Submenu --- */
+
+#playlist-submenu {
+    background: #32302F;
+    border: round #B8BB26;
+    padding: 2 4;
+    min-width: 35;
+    max-width: 40;
+    height: auto;
+    max-height: 25;
+}
+
+#edit-playlist-popup {
+    background: #32302F;
+    border: round #B8BB26;
+    padding: 2;
+    min-width: 40;
+    max-width: 60;
+    height: auto;
+    max-height: 15;
 }
 
 /* --- Loading Screen Popup --- */

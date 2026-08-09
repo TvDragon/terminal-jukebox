@@ -15,6 +15,15 @@ class LibaryService:
 
 	def get_all_songs(self) -> list:
 		return self.sql_db_connector.get_all_songs()
+
+	def add_playlist(self, playlist_name: str, is_auto_playlist: int) -> None:
+		self.sql_db_connector.add_playlist(playlist_name, is_auto_playlist)
+
+	def update_playlist(self, playlist_id: int, playlist_name: str) -> None:
+		self.sql_db_connector.update_playlist(playlist_id, playlist_name)
+
+	def delete_playlist(self, playlist_id: int) -> None:
+		self.sql_db_connector.delete_playlist(playlist_id)
 	
 	def get_playlists(self) -> list:
 		return self.sql_db_connector.get_all_playlists()

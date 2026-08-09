@@ -199,6 +199,35 @@ class SQL_Connector:
 
 		self.commit()
 		return True
+
+	def update_playlist(self, playlist_id: int, playlist_name: str) -> bool:
+		sql_query = """
+			UPDATE PLAYLISTS
+			SET playlist_name=?
+			WHERE id=?
+			"""
+
+		success = self.execute(sql_query, (playlist_name, playlist_id))
+
+		if not success:
+			return False
+
+		self.commit()
+		return True
+
+	def delete_playlist(self, playlist_id: int) -> bool:
+		sql_query = """
+			DELETE FROM PLAYLISTS
+			WHERE id=?
+			"""
+
+		success = self.execute(sql_query, (playlist_id,))
+
+		if not success:
+			return False
+
+		self.commit()
+		return True
 	
 	# Add song to playlist
 	def add_song_to_playlist(self, song_id: int, playlist_id: int) -> bool:

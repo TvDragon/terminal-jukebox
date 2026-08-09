@@ -34,3 +34,12 @@ class SongInfo:
 class Node:
 	parent: str
 	name: str
+
+class PlaylistAction(Enum):
+	EDIT = "edit"
+	DELETE = "delete"
+
+@dataclass
+class PlaylistMenuResult:
+	action: PlaylistAction
+	payload: object | None = None

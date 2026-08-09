@@ -23,12 +23,12 @@ from textual.widgets import (
 )
 from textual.widgets.selection_list import Selection
 
-from models.model import SongAction, SongMenuResult, SongInfo
+from models.model import SongAction, SongMenuResult, SongInfo, PlaylistAction, PlaylistMenuResult
 from utils import calculate_hash
 
 import os
 
-# --- Loading Screen Popup ----------------------------------------------------------
+# --- Loading Screen Popup ----------------------------------------------------
 
 class LoadingScreen(ModalScreen):
 	"""A modal confirmation dialog."""
@@ -184,7 +184,7 @@ class ScanFoldersWidget(ModalScreen[list | None]):
 		self.temp_added_folders.clear()
 		self.dismiss(None)
 
-# --- Delete File Popup ----------------------------------------------------
+# --- Delete File Popup -------------------------------------------------------
 
 class DeleteFilePopup(ModalScreen[bool]):
 
@@ -331,7 +331,7 @@ class SongSubMenu(ModalScreen[SongMenuResult | None]):
 
 		self.dismiss(None)
 
-# --- Edit Song Info -----------------------------------------------------
+# --- Edit Song Info ----------------------------------------------------------
 
 class EditSongInfo(ModalScreen[SongInfo | None]):
 
@@ -397,4 +397,145 @@ class EditSongInfo(ModalScreen[SongInfo | None]):
 
 	@on(Button.Pressed, "#edit-cancel")
 	def on_cancel(self) -> None:
+		self.dismiss(None)
+
+# --- Create New Playlist -----------------------------------------------------
+
+class NewPlaylistPopup(ModalScreen[None]):
+
+	DEFAULT_CSS = """
+	NewPlaylistPopup {
+		align: center middle;
+	}
+	"""
+
+	def __init__(self) -> None:
+		super().__init__()
+		self.playlist_name = ""
+
+	def on_mount(self) -> None:
+		container = self.query_one("#new-playlist-popup", Container)
+		container.border_title = "Create New Playlist"
+
+	def compose(self) -> ComposeResult:
+		with Container(id="new-playlist-popup"):
+			with Vertical(classes="playlist-name"):
+				yield Label("Playlist name:")
+				yield Input(id="playlist-name-input")
+				yield Checkbox("Autoplaylist", id="autoplaylist-checkbox")
+			with Horizontal(classes="dialog-buttons"):
+				yield Button("Create", variant="success", id="new-playlist-create")
+				yield Button("Cancel", variant="error", id="new-playlist-cancel")
+
+	@on(Input.Changed, "#playlist-name-input")
+	def changed_playlist_name_input(self, event: Input.Changed) -> None:
+		self.playlist_name = event.value
+
+	@on(Button.Pressed, "#new-playlist-create")
+	def on_create_new_playlist(self) -> None:
+		checkbox = self.query_one("#autoplaylist-checkbox", Checkbox)
+		is_auto_playlist = checkbox.value
+
+		self.dismiss({"playlist_name": self.playlist_name, "is_auto_playlist": is_auto_playlist})
+
+	@on(Button.Pressed, "#new-playlist-cancel")
+	def on_cancel_new_playlist(self) -> None:
+		self.dismiss(None)
+
+# --- Playlist Submenu --------------------------------------------------------
+class PlaylistSubMenu(ModalScreen[SongMenuResult | None]):
+
+	DEFAULT_CSS = """
+	PlaylistSubMenu {
+		align: center middle;
+	}
+	"""
+
+	def __init__(self, playlist_name: str) -> None:
+		super().__init__()
+		self.playlist_name = playlist_name
+
+	def on_mount(self) -> None:
+		playlist_submenu = self.query_one("#playlist-submenu", OptionList)
+		playlist_submenu.border_title = "Playlist Submenu"
+
+	def compose(self) -> ComposeResult:
+		yield OptionList(
+			Option("Edit", id="opt-playlist-edit"),
+			Option("Delete", id="opt-playlist-delete"),
+			id="playlist-submenu"
+		)
+
+	@on(OptionList.OptionSelected, "#playlist-submenu")
+	def option_selected(self, event: OptionList.OptionSelected) -> None:
+		option = event.option_list.get_option_at_index(event.option_index)
+
+		if option.id == "opt-playlist-edit":
+			def edit_playlist(result: dict | None) -> None:
+				if result:
+					self.dismiss(PlaylistMenuResult(PlaylistAction.EDIT, result))
+				else:
+					self.dismiss(None)
+
+			self.app.push_screen(EditPlaylistPopup(self.playlist_name), edit_playlist)
+		elif option.id == "opt-playlist-delete":
+			def confirm_remove(confirmed: bool) -> None:
+				if confirmed:
+					self.dismiss(PlaylistMenuResult(PlaylistAction.DELETE))
+				else:
+					self.dismiss(None)
+
+			prompt = "Do you wish to delete this playlist?"
+			self.app.push_screen(ConfirmDialog(prompt), confirm_remove)
+
+	@on(Click)
+	def click_background(self, event: Click) -> None:
+		playlist_submenu = self.query_one("#playlist-submenu")
+
+		# Ignore clicks inside this popup
+		if playlist_submenu in event.widget.ancestors_with_self:
+			return
+
+		self.dismiss(None)
+
+# --- Edit Playlist Popup ---------------------------------------------------------
+
+class EditPlaylistPopup(ModalScreen[None]):
+
+	DEFAULT_CSS = """
+	EditPlaylistPopup {
+		align: center middle;
+	}
+	"""
+
+	def __init__(self, playlist_name: str) -> None:
+		super().__init__()
+		self.playlist_name = playlist_name
+
+	def on_mount(self) -> None:
+		container = self.query_one("#edit-playlist-popup", Container)
+		container.border_title = "Edit Playlist"
+		playlist_input = self.query_one("#playlist-name-input", Input)
+		playlist_input.value = self.playlist_name
+
+	def compose(self) -> ComposeResult:
+		with Container(id="edit-playlist-popup"):
+			with Vertical(classes="playlist-name"):
+				yield Label("Playlist name:")
+				yield Input(id="playlist-name-input")
+			with Horizontal(classes="dialog-buttons"):
+				yield Button("Save", variant="success", id="playlist-save")
+				yield Button("Cancel", variant="error", id="playlist-cancel")
+
+	@on(Input.Changed, "#playlist-name-input")
+	def changed_playlist_name_input(self, event: Input.Changed) -> None:
+		self.playlist_name = event.value
+
+	@on(Button.Pressed, "#playlist-save")
+	def on_create_new_playlist(self) -> None:
+
+		self.dismiss({"playlist_name": self.playlist_name})
+
+	@on(Button.Pressed, "#playlist-cancel")
+	def on_cancel_new_playlist(self) -> None:
 		self.dismiss(None)
