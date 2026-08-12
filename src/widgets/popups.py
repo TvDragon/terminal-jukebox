@@ -393,6 +393,8 @@ class EditSongInfo(ModalScreen[SongInfo | None]):
 
 	@on(Button.Pressed, "#edit-save")
 	def on_save(self) -> None:
+		genres_ls = [genre.strip().lower() for genre in self.song_info.genres.split(";")]
+		self.song_info.genres = ";".join(genres_ls)
 		self.dismiss(self.song_info)
 
 	@on(Button.Pressed, "#edit-cancel")
@@ -539,3 +541,27 @@ class EditPlaylistPopup(ModalScreen[None]):
 	@on(Button.Pressed, "#playlist-cancel")
 	def on_cancel_new_playlist(self) -> None:
 		self.dismiss(None)
+
+# --- Error Popup ----------------------------------------------------------
+
+class ErrorPopup(ModalScreen[bool]):
+
+	DEFAULT_CSS = """
+	ErrorPopup {
+		align: center middle;
+	}
+	"""
+
+	def __init__(self, message: str) -> None:
+		super().__init__()
+		self.message = message
+
+	def compose(self) -> ComposeResult:
+		with Container(id="confirm-dialog"):
+			yield Static(self.message)
+			with Horizontal(classes="dialog-buttons"):
+				yield Button("Ok", variant="success", id="confirm-ok")
+
+	@on(Button.Pressed, "#confirm-ok")
+	def on_confirm(self) -> None:
+		self.dismiss(True)

@@ -1,5 +1,7 @@
+from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
+from typing import TypeAlias
 
 class SongAction(Enum):
 	PLAY = "play"
@@ -43,3 +45,27 @@ class PlaylistAction(Enum):
 class PlaylistMenuResult:
 	action: PlaylistAction
 	payload: object | None = None
+
+# ============================================================
+# AST nodes
+# ============================================================
+
+@dataclass
+class Comparison:
+    field: str
+    operator: str
+    value: str
+
+
+@dataclass
+class And:
+    left: Expression
+    right: Expression
+
+
+@dataclass
+class Or:
+    left: Expression
+    right: Expression
+
+Expression: TypeAlias = Comparison | And | Or

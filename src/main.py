@@ -14,6 +14,7 @@ from textual_slider import Slider
 from textual.suggester import Suggester
 from textual.widgets import (
 	Button,
+	Checkbox,
 	DataTable,
 	Footer,
 	Header,
@@ -34,8 +35,8 @@ from services.database_handler import SQL_Connector
 from services.library_service import LibaryService
 from services.music_player import MusicPlayer
 from widgets.widgets import MusicTable, PlaylistButton
-from widgets.popups import ScanFoldersWidget, DeleteFilePopup, SongSubMenu, LoadingScreen, NewPlaylistPopup, PlaylistSubMenu
-from utils import normalise_text
+from widgets.popups import ScanFoldersWidget, DeleteFilePopup, SongSubMenu, LoadingScreen, NewPlaylistPopup, PlaylistSubMenu, ErrorPopup
+from utils import normalise_text, search_songs
 
 import os
 
@@ -256,7 +257,7 @@ class TerminalJukeBox(App):
 		yield Header()
 
 		with Container(id="root"):
-			# --- Top Bar (Home and search bar) ---
+			# --- Top Bar (Home and search bar) ---1gg
 			with Container(id="top-box"):
 				with Horizontal(id="top-bar", classes="main-border"):
 					yield Button("Scan", id="btn-scan")
@@ -265,6 +266,7 @@ class TerminalJukeBox(App):
 						placeholder="Search for music...",
 						id="music-search-input"
 					)
+					yield Checkbox("Advanced Search", id="advanced-search-checkbox")
 
 			with Container(id="main-box", classes="main-border"):
 				# --- Middle Section (Playlists and songs) ---
@@ -361,22 +363,57 @@ class TerminalJukeBox(App):
 	
 	@on(Input.Changed, "#music-search-input")
 	def update_search_music(self, event: Input.Changed) -> None:
-		searched_music = normalise_text(event.value)
+		checkbox = self.query_one("#advanced-search-checkbox", Checkbox)
+		is_advanced_search = checkbox.value
 
-		results = []
-		table = None
-		if self.current_tab == "tab-music":
-			for song in self.all_songs:
-				if searched_music in normalise_text(song["title"]):
-					results.append(song)
-			table = self.query_one("#music-table", MusicTable)
-		elif self.current_tab == "tab-playlists":
-			for song in self.playlist_songs_view:
-				if searched_music.lower() in normalise_text(song["title"]):
-					results.append(song)
-			table = self.query_one("#songs-playlist-table", MusicTable)
-		table.clear_songs()
-		table.set_songs(results)
+		if not is_advanced_search:
+			searched_music = normalise_text(event.value)
+
+			results = []
+			table = None
+			if self.current_tab == "tab-music":
+				for song in self.all_songs:
+					if searched_music in normalise_text(song["title"]):
+						results.append(song)
+				table = self.query_one("#music-table", MusicTable)
+			elif self.current_tab == "tab-playlists":
+				for song in self.playlist_songs_view:
+					if searched_music.lower() in normalise_text(song["title"]):
+						results.append(song)
+				table = self.query_one("#songs-playlist-table", MusicTable)
+			table.clear_songs()
+			table.set_songs(results)
+
+	@on(Input.Submitted, "#music-search-input")
+	def submitted_search_music(self, event: Input.Submitted) -> None:
+		checkbox = self.query_one("#advanced-search-checkbox", Checkbox)
+		is_advanced_search = checkbox.value
+
+		if is_advanced_search:
+			filtered_search = event.value
+			results = []
+			table = None
+			try:
+				if self.current_tab == "tab-music":
+					if filtered_search != "":
+						results = search_songs(self.all_songs, filtered_search)
+					else:
+						results = self.all_songs
+					table = self.query_one("#music-table", MusicTable)
+				elif self.current_tab == "tab-playlists":
+					if filtered_search != "":
+						results = search_songs(self.playlist_songs_view, filtered_search)
+					else:
+						results = self.all_songs
+					table = self.query_one("#songs-playlist-table", MusicTable)
+
+				table.clear_songs()
+				table.set_songs(results)
+			except ValueError as e:
+				def empty_func(result: None):
+					pass
+
+				self.push_screen(ErrorPopup(str(e)), empty_func)
 
 	# --- Music Table Actions -------------------------------------------------
 
