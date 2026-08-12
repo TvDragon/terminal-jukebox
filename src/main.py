@@ -95,7 +95,7 @@ class TerminalJukeBox(App):
 		self.playlist_songs_active = []
 		self.playlist_songs_view = []
 		self.playlist_name = self.playlists[0]["playlist_name"] if len(self.playlists) > 0 else None
-		self.playlist_id = self.playlists[0]["id"] if len(self.playlists) > 0 else 0
+		self.playlist_id = self.playlists[0]["id"] if len(self.playlists) > 0 else -1	
 		self.current_tab = ""
 		self.play_all_songs = True	# All songs library or specific playlist to play
 		self.btn_num_pressed = 0
@@ -382,30 +382,34 @@ class TerminalJukeBox(App):
 
 	@on(DataTable.RowSelected, "#music-table")
 	def music_table_row_selected(self, event: DataTable.RowSelected) -> None:
-		song_id = int(event.row_key.value)
-		if self.mouse_click == 1:
-			self.play_all_songs = True
-			self._play_selected_song(song_id)
-		self.check_right_click_music_table(song_id)
+		if event.row_key != None:
+			song_id = int(event.row_key.value)
+			if self.mouse_click == 1:
+				self.play_all_songs = True
+				self._play_selected_song(song_id)
+			self.check_right_click_music_table(song_id)
 
 	@on(DataTable.RowSelected, "#songs-playlist-table")
 	def songs_playlist_table_row_selected(self, event: DataTable.RowSelected) -> None:
-		song_id = int(event.row_key.value)
-		if self.mouse_click == 1:
-			self.play_all_songs = False
-			self.playlist_songs_active = self.playlist_songs_view
-			self._play_selected_song(song_id, "playlist-view")
-		self.check_right_click_songs_playlist_table(song_id)
+		if event.row_key != None:
+			song_id = int(event.row_key.value)
+			if self.mouse_click == 1:
+				self.play_all_songs = False
+				self.playlist_songs_active = self.playlist_songs_view
+				self._play_selected_song(song_id, "playlist-view")
+			self.check_right_click_songs_playlist_table(song_id)
 
 	@on(DataTable.RowHighlighted, "#music-table")
 	def music_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
-		song_id = int(event.row_key.value)
-		self.check_right_click_music_table(song_id)
+		if event.row_key != None:
+			song_id = int(event.row_key.value)
+			self.check_right_click_music_table(song_id)
 
 	@on(DataTable.RowHighlighted, "#songs-playlist-table")
 	def songs_playlist_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
-		song_id = int(event.row_key.value)
-		self.check_right_click_songs_playlist_table(song_id)
+		if event.row_key != None:
+			song_id = int(event.row_key.value)
+			self.check_right_click_songs_playlist_table(song_id)
 
 	def check_right_click_music_table(self, song_id: int) -> None:
 		idx = 0
