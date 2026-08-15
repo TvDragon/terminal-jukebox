@@ -226,6 +226,7 @@ class TerminalJukeBox(App):
 									playlist_table.clear_songs()
 									playlist_table.set_songs(self.playlist_songs_view)
 
+				self._stop_and_reset()
 				self.push_screen(DeleteFilePopup("File does not exist: {}".format(curr_song["file_path"])), delete_song)
 		else:
 			self._stop_and_reset()
@@ -236,12 +237,14 @@ class TerminalJukeBox(App):
 			for i, song in enumerate(self.all_songs):
 				if song["id"] == idx:
 					self.music_player.set_song_idx(self.all_songs[i-1]["id"])
+					break
 			self._load_song()
 		elif len(self.playlist_songs_active) > 0:
 			idx = self.music_player.get_song_idx()
 			for i, song in enumerate(self.playlist_songs_active):
 				if song["id"] == idx:
 					self.music_player.set_song_idx(self.playlist_songs_active[i-1]["id"])
+					break
 			self._load_song()
 			
 	def _next_song(self) -> None:
@@ -250,12 +253,14 @@ class TerminalJukeBox(App):
 			for i, song in enumerate(self.all_songs):
 				if song["id"] == idx:
 					self.music_player.set_song_idx(self.all_songs[(i+1) % len(self.all_songs)]["id"])
+					break
 			self._load_song()
 		elif len(self.playlist_songs_active) > 0:
 			idx = self.music_player.get_song_idx()
 			for i, song in enumerate(self.playlist_songs_active):
 				if song["id"] == idx:
 					self.music_player.set_song_idx(self.playlist_songs_active[(i+1) % len(self.playlist_songs_active)]["id"])
+					break
 			self._load_song()
 
 	def _update_volume_bar(self):
