@@ -260,7 +260,7 @@ Label {
     min-width: 40;
     max-width: 60;
     height: auto;
-    max-height: 20;
+    max-height: 24;
 }
 
 #playlist-name-input {
@@ -290,7 +290,7 @@ Label {
     min-width: 40;
     max-width: 60;
     height: auto;
-    max-height: 15;
+    max-height: 18;
 }
 
 /* --- Loading Screen Popup --- */

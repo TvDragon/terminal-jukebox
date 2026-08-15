@@ -250,3 +250,155 @@ def parse_filter(filter_text: str) -> Expression:
 def search_songs(songs: list[object], filter_text: str) -> list:
 	expression = parse_filter(filter_text)
 	return [ song for song in songs if evaluate(expression, song) ]
+
+# ============================================================
+# SQL QUERIES FOR ADVANCED SEARCH FILTER
+# ============================================================
+
+COLUMN_MAP = {
+    "id": "id",
+    "title": "title",
+    "artist": "artist",
+    "album": "album",
+
+    "genre": "genres",
+}
+
+def escape_like(value: str) -> str:
+    """
+    Escape characters that have special meanings in SQL LIKE:
+
+        %  matches any number of characters
+        _  matches exactly one character
+        \\ is used as the escape character
+    """
+    return (
+        value
+        .replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+    )
+
+def compile_comparison(comparison: Comparison) -> tuple[str, list[str]]:
+    field = comparison.field.casefold()
+    operator = comparison.operator
+    value = normalize(comparison.value)
+
+    if field not in COLUMN_MAP:
+        raise ValueError(
+            f"Field {comparison.field!r} is not valid"
+        )
+
+    column = COLUMN_MAP[field]
+
+    # title, artist and album
+    if field in {"title", "artist", "album"}:
+        if operator == "=":
+            return (
+                f"LOWER({column}) = ?",
+                [value],
+            )
+
+        if operator == "!=":
+            return (
+                f"LOWER({column}) != ?",
+                [value],
+            )
+
+        if operator == ":":
+            escaped_value = escape_like(value)
+
+            return (
+                f"LOWER({column}) LIKE ? ESCAPE '\\'",
+                [f"%{escaped_value}%"],
+            )
+
+        if operator == "!:":
+            escaped_value = escape_like(value)
+
+            return (
+                f"LOWER({column}) NOT LIKE ? ESCAPE '\\'",
+                [f"%{escaped_value}%"],
+            )
+
+        raise ValueError(
+            f"Operator {operator!r} is not supported "
+            f"for field {field!r}"
+        )
+
+    # genre in the filter maps to the genres database column.
+    if field == "genre":
+        if operator == ":":
+            escaped_value = escape_like(value)
+
+            return (
+                "LOWER(genres) LIKE ? ESCAPE '\\'",
+                [f"%{escaped_value}%"],
+            )
+
+        if operator == "!:":
+            escaped_value = escape_like(value)
+
+            return (
+                "LOWER(genres) NOT LIKE ? ESCAPE '\\'",
+                [f"%{escaped_value}%"],
+            )
+
+        raise ValueError(
+            f"Operator {operator!r} is not supported "
+            "for genre"
+        )
+
+    raise ValueError(
+        f"Unsupported field: {field!r}"
+    )
+
+def compile_expression(expression: Expression) -> tuple[str, list[str]]:
+    if isinstance(expression, Comparison):
+        return compile_comparison(expression)
+
+    if isinstance(expression, And):
+        left_sql, left_parameters = compile_expression(
+            expression.left
+        )
+
+        right_sql, right_parameters = compile_expression(
+            expression.right
+        )
+
+        return (
+            f"({left_sql} AND {right_sql})",
+            left_parameters + right_parameters,
+        )
+
+    if isinstance(expression, Or):
+        left_sql, left_parameters = compile_expression(
+            expression.left
+        )
+
+        right_sql, right_parameters = compile_expression(
+            expression.right
+        )
+
+        return (
+            f"({left_sql} OR {right_sql})",
+            left_parameters + right_parameters,
+        )
+
+    raise TypeError(
+        f"Unsupported expression node: "
+        f"{type(expression).__name__}"
+    )
+
+def build_music_query(filter_text: str) -> tuple[str, list[str]]:
+    expression = parse_filter(filter_text)
+
+    where_sql, parameters = compile_expression(expression)
+
+    sql = (
+        "SELECT *\n"
+        "FROM SONGS\n"
+        f"WHERE {where_sql}"
+    )
+
+    return sql, parameters

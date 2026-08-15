@@ -45,7 +45,8 @@ class SQL_Connector:
 		success = self.execute("""CREATE TABLE PLAYLISTS(
 			id					INTEGER PRIMARY KEY AUTOINCREMENT,
 			playlist_name		TEXT,
-			is_auto_playlist	INTEGER
+			is_auto_playlist	INTEGER,
+			advanced_filter		TEXT
 		)""")
 
 		if not success:
@@ -185,14 +186,14 @@ class SQL_Connector:
 
 		return song != None
 
-	def add_playlist(self, playlist_name: str, is_auto_playlist: int) -> bool:
+	def add_playlist(self, playlist_name: str, is_auto_playlist: int, advanced_filter: str) -> bool:
 		
 		sql_query = """
-			INSERT INTO PLAYLISTS (playlist_name, is_auto_playlist)
-			VALUES (?, ?)
+			INSERT INTO PLAYLISTS (playlist_name, is_auto_playlist, advanced_filter)
+			VALUES (?, ?, ?)
 		"""
 
-		success = self.execute(sql_query, (playlist_name, is_auto_playlist))
+		success = self.execute(sql_query, (playlist_name, is_auto_playlist, advanced_filter))
 
 		if not success:
 			return False
@@ -200,14 +201,14 @@ class SQL_Connector:
 		self.commit()
 		return True
 
-	def update_playlist(self, playlist_id: int, playlist_name: str) -> bool:
+	def update_playlist(self, playlist_id: int, playlist_name: str, advanced_filter) -> bool:
 		sql_query = """
 			UPDATE PLAYLISTS
-			SET playlist_name=?
+			SET playlist_name=?, advanced_filter=?
 			WHERE id=?
 			"""
 
-		success = self.execute(sql_query, (playlist_name, playlist_id))
+		success = self.execute(sql_query, (playlist_name, advanced_filter, playlist_id))
 
 		if not success:
 			return False
@@ -261,6 +262,19 @@ class SQL_Connector:
 
 		self.commit()
 		return True
+
+	def get_playlist(self, playlist_name: str) -> sqlite3.Row:
+
+		sql_query = """
+			SELECT * FROM PLAYLISTS
+			WHERE playlist_name=?
+			"""
+
+		self.execute(sql_query, (playlist_name,))
+
+		playlist = self.db_cursor.fetchone()
+
+		return playlist
 	
 	def get_all_playlists(self) -> list:
 		sql_query = """
@@ -407,3 +421,9 @@ class SQL_Connector:
 
 		self.commit()
 		return True
+
+	def search_music(self, sql, parameters) -> list[sqlite3.Row]:
+
+		cursor = self.db_cursor.execute(sql, parameters)
+
+		return cursor.fetchall()

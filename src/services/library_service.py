@@ -5,9 +5,10 @@ from mutagen.flac import FLAC
 from models.model import Node
 from services.database_handler import SQL_Connector
 
-from utils import calculate_hash
+from utils import calculate_hash, build_music_query
 
 import os
+import sqlite3
 
 class LibaryService:
 	def __init__(self):
@@ -16,11 +17,14 @@ class LibaryService:
 	def get_all_songs(self) -> list:
 		return self.sql_db_connector.get_all_songs()
 
-	def add_playlist(self, playlist_name: str, is_auto_playlist: int) -> None:
-		self.sql_db_connector.add_playlist(playlist_name, is_auto_playlist)
+	def add_playlist(self, playlist_name: str, is_auto_playlist: int, advanced_filter: str) -> None:
+		self.sql_db_connector.add_playlist(playlist_name, is_auto_playlist, advanced_filter)
 
-	def update_playlist(self, playlist_id: int, playlist_name: str) -> None:
-		self.sql_db_connector.update_playlist(playlist_id, playlist_name)
+	def get_playlist(self, playlist_name: str) -> sqlite3.Row:
+		return self.sql_db_connector.get_playlist(playlist_name)
+
+	def update_playlist(self, playlist_id: int, playlist_name: str, advanced_filter: str) -> None:
+		self.sql_db_connector.update_playlist(playlist_id, playlist_name, advanced_filter)
 
 	def delete_playlist(self, playlist_id: int) -> None:
 		self.sql_db_connector.delete_playlist(playlist_id)
@@ -142,3 +146,8 @@ class LibaryService:
 					all_files = os.listdir(curr_path)
 					for file_path in all_files:
 						stack.append(Node(curr_path, file_path))
+
+	def get_playlist_advanced_filter(self, filter_text: str) -> list[sqlite3.Row]:
+		sql, parameters = build_music_query(filter_text)
+		songs = self.sql_db_connector.search_music(sql, parameters)
+		return songs

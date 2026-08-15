@@ -129,7 +129,7 @@ class TerminalJukeBox(App):
 		await playlists_widget.remove_children()
 
 		for playlist in self.playlists:
-			playlists_widget.mount(PlaylistButton(playlist["id"], playlist["playlist_name"]))
+			playlists_widget.mount(PlaylistButton(playlist["id"], playlist["playlist_name"], playlist["advanced_filter"]))
 
 	def _update_music_table(self) -> None:
 		music_table = self.query_one("#music-table", MusicTable)
@@ -142,7 +142,15 @@ class TerminalJukeBox(App):
 
 	def _load_playlist_view(self) -> None:
 		if self.playlist_name != None:
-			self.playlist_songs_view = self.library_service.get_playlist_songs(self.playlist_name)
+			playlist = self.library_service.get_playlist(self.playlist_name)
+			if playlist["is_auto_playlist"]:
+				try:
+					self.playlist_songs_view = self.library_service.get_playlist_advanced_filter(playlist["advanced_filter"])
+				except ValueError as e:
+					error_msg = "Error for playlist: {}\n{}".format(self.playlist_name, str(e))
+					self.push_screen(ErrorPopup(error_msg))
+			else:
+				self.playlist_songs_view = self.library_service.get_playlist_songs(self.playlist_name)
 
 	def _stop_and_reset(self) -> None:
 		self.music_player.reset_position()
@@ -354,7 +362,7 @@ class TerminalJukeBox(App):
 
 		async def create_new_playlist(result : (dict | None)) -> None:
 			if result:
-				self.library_service.add_playlist(result["playlist_name"], result["is_auto_playlist"])
+				self.library_service.add_playlist(result["playlist_name"], result["is_auto_playlist"], result["advanced_filter"])
 				await self._update_playlists_view()
 
 		self.push_screen(NewPlaylistPopup(), create_new_playlist)
@@ -404,16 +412,13 @@ class TerminalJukeBox(App):
 					if filtered_search != "":
 						results = search_songs(self.playlist_songs_view, filtered_search)
 					else:
-						results = self.all_songs
+						results = self.playlist_songs_view
 					table = self.query_one("#songs-playlist-table", MusicTable)
 
 				table.clear_songs()
 				table.set_songs(results)
 			except ValueError as e:
-				def empty_func(result: None):
-					pass
-
-				self.push_screen(ErrorPopup(str(e)), empty_func)
+				self.push_screen(ErrorPopup(str(e)))
 
 	# --- Music Table Actions -------------------------------------------------
 
@@ -510,6 +515,9 @@ class TerminalJukeBox(App):
 			playlists = self.library_service.get_playlists()
 			in_playlists = self.library_service.get_playlists_for_song(song_id, playlists)	# E.g. [{"playlist_id": 2, "in_playlist": True}]
 
+			playlist = self.library_service.get_playlist(self.playlist_name)
+			is_auto_playlist= playlist["is_auto_playlist"]
+
 			song_playlists = []
 			for playlist in playlists:
 				song_playlists.append(SongPlaylists(playlist["id"],
@@ -548,7 +556,7 @@ class TerminalJukeBox(App):
 
 			self.push_screen(SongSubMenu(SongInfo(curr_song["id"], curr_song["title"],
 										 curr_song["artist"], curr_song["album"],
-										 curr_song["genres"], curr_song["file_path"]), song_playlists, False), sub_menu_task)
+										 curr_song["genres"], curr_song["file_path"]), song_playlists, False, is_auto_playlist), sub_menu_task)
 
 	def _play_selected_song(self, song_id: int, view: str ="") -> None:
 		self.music_player.set_song_idx(song_id)
@@ -601,32 +609,43 @@ class TerminalJukeBox(App):
 					self.music_player.set_play()
 					self._load_song("playlist-view")
 			else:
-				self.playlist_name = playlist_widget.playlist_name
-				self.playlist_id = playlist_widget.playlist_id
-				self._load_playlist_view()
+				try:
+					self.playlist_name = playlist_widget.playlist_name
+					self.playlist_id = playlist_widget.playlist_id
+					self._load_playlist_view()
 
-				playlist_table = self.query_one("#songs-playlist-table", MusicTable)
-				playlist_table.clear_songs()
-				playlist_table.set_songs(self.playlist_songs_view)
-				self.btn_num_pressed = 0
+					playlist_table = self.query_one("#songs-playlist-table", MusicTable)
+					playlist_table.clear_songs()
+					playlist_table.set_songs(self.playlist_songs_view)
+					self.btn_num_pressed = 0
+				except ValueError as e:
+					error_msg = "Error for playlist: {}\n{}".format(self.playlist_name, str(e))
+					self.push_screen(ErrorPopup(error_msg))
 			self.btn_num_pressed += 1
 		elif self.mouse_click == 3:
 			playlist_id = playlist_widget.playlist_id
 			playlist_name = playlist_widget.playlist_name
+			playlist_advanced_filter = playlist_widget.advanced_filter
 
 			async def sub_menu_task(result: PlaylistMenuResult | None):
 				if result:
 					if result.action == PlaylistAction.EDIT:
 						new_playlist_name = result.payload["playlist_name"]
-						self.library_service.update_playlist(playlist_id, new_playlist_name)
+						new_advanced_filter = result.payload["advanced_filter"]
+						self.library_service.update_playlist(playlist_id, new_playlist_name, new_advanced_filter)
 						await self._update_playlists_view()
+						table = self.query_one("#songs-playlist-table", MusicTable)
+						self.playlist_name = new_playlist_name
+						self._load_playlist_view()
+						table.clear_songs()
+						table.set_songs(self.playlist_songs_view)
 					elif result.action == PlaylistAction.DELETE:
 						self.library_service.delete_playlist(playlist_id)	# CASCADE delete rows in SONGS_PLAYLISTS that have this playlist_id
 						await self._update_playlists_view()
 						if playlist_id == self.playlist_id:
 							self.playlist_id = -1
 
-			self.push_screen(PlaylistSubMenu(playlist_name), sub_menu_task)	
+			self.push_screen(PlaylistSubMenu(playlist_name, playlist_advanced_filter), sub_menu_task)	
 			
 
 	# --- Music Control Buttons -----------------------------------------------
