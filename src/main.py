@@ -30,7 +30,7 @@ from textual.widgets import (
 )
 from textual.widgets.selection_list import Selection
 
-from models.model import SongAction, SongMenuResult, SongPlaylists, SongInfo, PlaylistAction, PlaylistMenuResult
+from models.model import SongAction, SongMenuResult, SongPlaylists, SongInfo, PlaylistAction, PlaylistMenuResult, PlaylistInfo
 from services.database_handler import SQL_Connector
 from services.library_service import LibaryService
 from services.music_player import MusicPlayer
@@ -65,7 +65,7 @@ def render_volume_bar(volume: int) -> str:
 	empty = total - filled
 
 	return (
-			"[bold]🔊[/bold]"
+			"[bold]��[/bold]"
 			f"[green]{'─' * (filled - 1)}[green]"
 			"[bold green]\u25a0[/bold green]"
 			f"[grey]{'─' * empty}[grey]"
@@ -95,8 +95,8 @@ class TerminalJukeBox(App):
 		self.playlists = self.library_service.get_playlists()
 		self.playlist_songs_active = []
 		self.playlist_songs_view = []
-		self.playlist_name = self.playlists[0]["playlist_name"] if len(self.playlists) > 0 else None
-		self.playlist_id = self.playlists[0]["id"] if len(self.playlists) > 0 else -1	
+		self.playlist_name = self.playlists[0].playlist_name if len(self.playlists) > 0 else None
+		self.playlist_id = self.playlists[0].id if len(self.playlists) > 0 else -1	
 		self.current_tab = ""
 		self.play_all_songs = True	# All songs library or specific playlist to play
 		self.btn_num_pressed = 0
@@ -129,7 +129,7 @@ class TerminalJukeBox(App):
 		await playlists_widget.remove_children()
 
 		for playlist in self.playlists:
-			playlists_widget.mount(PlaylistButton(playlist["id"], playlist["playlist_name"], playlist["advanced_filter"]))
+			playlists_widget.mount(PlaylistButton(playlist.id, playlist.playlist_name, playlist.advanced_filter))
 
 	def _update_music_table(self) -> None:
 		music_table = self.query_one("#music-table", MusicTable)
@@ -143,9 +143,9 @@ class TerminalJukeBox(App):
 	def _load_playlist_view(self) -> None:
 		if self.playlist_name != None:
 			playlist = self.library_service.get_playlist(self.playlist_name)
-			if playlist["is_auto_playlist"]:
+			if playlist.is_auto_playlist:
 				try:
-					self.playlist_songs_view = self.library_service.get_playlist_advanced_filter(playlist["advanced_filter"])
+					self.playlist_songs_view = self.library_service.get_playlist_advanced_filter(playlist.advanced_filter)
 				except ValueError as e:
 					error_msg = "Error for playlist: {}\n{}".format(self.playlist_name, str(e))
 					self.push_screen(ErrorPopup(error_msg))
@@ -175,20 +175,20 @@ class TerminalJukeBox(App):
 		if self.play_all_songs:
 			if len(self.all_songs) > 0:
 				for song in self.all_songs:
-					if song["id"] == song_idx:
+					if song.id == song_idx:
 						curr_song = song
 						break
 		elif len(self.playlist_songs_active) > 0:
 			for song in self.playlist_songs_active:
-				if song["id"] == song_idx:
+				if song.id == song_idx:
 					curr_song = song
 					break
 
 		if curr_song != None:
-			if os.path.isfile(curr_song["file_path"]):
+			if os.path.isfile(curr_song.file_path):
 				self.music_player.load_song(curr_song)
-				self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(curr_song["title"]))
-				self.query_one("#lbl-artist", Label).update(curr_song["artist"])
+				self.query_one("#lbl-title", Label).update("[bold]{}[/bold]".format(curr_song.title))
+				self.query_one("#lbl-artist", Label).update(curr_song.artist)
 
 				if self.music_player.get_is_playing():
 					btn = self.query_one("#btn-play-pause", Button)
@@ -201,19 +201,19 @@ class TerminalJukeBox(App):
 			else:			
 				async def delete_song(confirmed: bool) -> None:
 					if confirmed:
-						self.library_service.delete_song(curr_song["id"])
+						self.library_service.delete_song(curr_song.id)
 						if self.play_all_songs and len(self.all_songs) > 0:
 							for idx, song in enumerate(self.all_songs):
-								if song["id"] == song_idx:
+								if song.id == song_idx:
 									self.all_songs.pop(idx)
 									break
 							music_table = self.query_one("#music-table", MusicTable)
-							music_table.remove_row(RowKey(curr_song["id"]))
+							music_table.remove_row(RowKey(curr_song.id))
 						elif not self.play_all_songs:
 							if view == "playlist-view":
 								if len(self.playlist_songs_view) > 0:
 									for idx, song in enumerate(self.playlist_songs_view):
-										if song["id"] == song_idx:
+										if song.id == song_idx:
 											self.playlist_songs_view.pop(idx)
 											break
 									playlist_table = self.query_one("#songs-playlist-table", MusicTable)
@@ -227,7 +227,7 @@ class TerminalJukeBox(App):
 									playlist_table.set_songs(self.playlist_songs_view)
 
 				self._stop_and_reset()
-				self.push_screen(DeleteFilePopup("File does not exist: {}".format(curr_song["file_path"])), delete_song)
+				self.push_screen(DeleteFilePopup("File does not exist: {}".format(curr_song.file_path)), delete_song)
 		else:
 			self._stop_and_reset()
 
@@ -235,15 +235,15 @@ class TerminalJukeBox(App):
 		if self.play_all_songs and len(self.all_songs) > 0:
 			idx = self.music_player.get_song_idx()
 			for i, song in enumerate(self.all_songs):
-				if song["id"] == idx:
-					self.music_player.set_song_idx(self.all_songs[i-1]["id"])
+				if song.id == idx:
+					self.music_player.set_song_idx(self.all_songs[i-1].id)
 					break
 			self._load_song()
 		elif len(self.playlist_songs_active) > 0:
 			idx = self.music_player.get_song_idx()
 			for i, song in enumerate(self.playlist_songs_active):
-				if song["id"] == idx:
-					self.music_player.set_song_idx(self.playlist_songs_active[i-1]["id"])
+				if song.id == idx:
+					self.music_player.set_song_idx(self.playlist_songs_active[i-1].id)
 					break
 			self._load_song()
 			
@@ -251,17 +251,19 @@ class TerminalJukeBox(App):
 		if self.play_all_songs and len(self.all_songs) > 0:
 			idx = self.music_player.get_song_idx()
 			for i, song in enumerate(self.all_songs):
-				if song["id"] == idx:
-					self.music_player.set_song_idx(self.all_songs[(i+1) % len(self.all_songs)]["id"])
+				if song.id == idx:
+					self.music_player.set_song_idx(self.all_songs[(i+1) % len(self.all_songs)].id)
 					break
 			self._load_song()
 		elif len(self.playlist_songs_active) > 0:
 			idx = self.music_player.get_song_idx()
 			for i, song in enumerate(self.playlist_songs_active):
-				if song["id"] == idx:
-					self.music_player.set_song_idx(self.playlist_songs_active[(i+1) % len(self.playlist_songs_active)]["id"])
+				if song.id == idx:
+					self.music_player.set_song_idx(self.playlist_songs_active[(i+1) % len(self.playlist_songs_active)].id)
 					break
 			self._load_song()
+		else:
+			self._stop_and_reset()
 
 	def _update_volume_bar(self):
 		self.query_one("#volume-bar", Static).update(render_volume_bar(self.music_player.get_volume()))
@@ -336,7 +338,7 @@ class TerminalJukeBox(App):
 	@on(Button.Pressed, "#btn-scan")
 	def pressed_scan_files(self) -> None:
 
-		def scan_folders(new_music_folders: (list | None)) -> None:
+		def scan_folders(new_music_folders: (list[dict] | None)) -> None:
 			if new_music_folders:
 				self._scan_selected_folders(new_music_folders)
 
@@ -386,12 +388,12 @@ class TerminalJukeBox(App):
 			table = None
 			if self.current_tab == "tab-music":
 				for song in self.all_songs:
-					if searched_music in normalise_text(song["title"]):
+					if searched_music in normalise_text(song.title):
 						results.append(song)
 				table = self.query_one("#music-table", MusicTable)
 			elif self.current_tab == "tab-playlists":
 				for song in self.playlist_songs_view:
-					if searched_music.lower() in normalise_text(song["title"]):
+					if searched_music.lower() in normalise_text(song.title):
 						results.append(song)
 				table = self.query_one("#songs-playlist-table", MusicTable)
 			table.clear_songs()
@@ -463,7 +465,7 @@ class TerminalJukeBox(App):
 		if self.mouse_click == 3:
 			curr_song = None
 			for i, song in enumerate(self.all_songs):
-				if song["id"] == song_id:
+				if song.id == song_id:
 					curr_song = song
 					idx = i
 					break
@@ -472,11 +474,11 @@ class TerminalJukeBox(App):
 
 			song_playlists = []
 			for playlist in playlists:
-				song_playlists.append(SongPlaylists(playlist["id"],
-													playlist["playlist_name"],
+				song_playlists.append(SongPlaylists(playlist.id,
+													playlist.playlist_name,
 													song_id,
-													in_playlists[playlist["id"]],
-													playlist["is_auto_playlist"]))
+													in_playlists[playlist.id],
+													playlist.is_auto_playlist))
 			
 			async def sub_menu_task(result: SongMenuResult | None):
 				if result:
@@ -495,8 +497,8 @@ class TerminalJukeBox(App):
 					elif result.action == SongAction.UPDATE_TO_PLAYLIST:
 						options = result.payload
 						for playlist in playlists:
-							if not playlist["is_auto_playlist"]:
-								playlist_id = playlist["id"]
+							if not playlist.is_auto_playlist:
+								playlist_id = playlist.id
 								selected = options[playlist_id]
 								if not in_playlists[playlist_id] and selected == True:
 									self.library_service.add_song_to_playlist(song_id, playlist_id)
@@ -505,31 +507,28 @@ class TerminalJukeBox(App):
 					elif result.action == SongAction.DELETE:
 						await self.delete_selected_song(curr_song, idx)
 
-			self.push_screen(SongSubMenu(SongInfo(curr_song["id"], curr_song["title"],
-										 curr_song["artist"], curr_song["album"],
-										 curr_song["genres"], curr_song["file_path"]),
-										 song_playlists, True), sub_menu_task)
+			self.push_screen(SongSubMenu(curr_song, song_playlists, True), sub_menu_task)
 
 	def check_right_click_songs_playlist_table(self, song_id: int) -> None:
 		if self.mouse_click == 3:
 			curr_song = None
 			for song in self.playlist_songs_view:
-				if song["id"] == song_id:
+				if song.id == song_id:
 					curr_song = song
 					break
 			playlists = self.library_service.get_playlists()
 			in_playlists = self.library_service.get_playlists_for_song(song_id, playlists)	# E.g. [{"playlist_id": 2, "in_playlist": True}]
 
 			playlist = self.library_service.get_playlist(self.playlist_name)
-			is_auto_playlist= playlist["is_auto_playlist"]
+			is_auto_playlist= playlist.is_auto_playlist
 
 			song_playlists = []
 			for playlist in playlists:
-				song_playlists.append(SongPlaylists(playlist["id"],
-													playlist["playlist_name"],
+				song_playlists.append(SongPlaylists(playlist.id,
+													playlist.playlist_name,
 													song_id,
-													in_playlists[playlist["id"]],
-													playlist["is_auto_playlist"]))
+													in_playlists[playlist.id],
+													playlist.is_auto_playlist))
 			
 			async def sub_menu_task(result: SongMenuResult | None):
 				if result:
@@ -539,7 +538,7 @@ class TerminalJukeBox(App):
 						self._play_selected_song(song_id, "playlist-view")
 					if result.action == SongAction.EDIT:
 						song = result.payload
-						self.library_service.edit_song(song.id, song.title, song.artist, song.album, song.genres)
+						self.library_service.edit_song(song.id, song.title, song.artist, song.album, song.genres, song.file_path)
 						playlist_table = self.query_one("#songs-playlist-table", MusicTable)
 						self.playlist_songs_view = self.library_service.get_playlist_songs(self.playlist_name)
 						playlist_table.update_cell(RowKey(song.id), playlist_table.columns["title"].key, song.title)
@@ -549,8 +548,8 @@ class TerminalJukeBox(App):
 					elif result.action == SongAction.UPDATE_TO_PLAYLIST:
 						options = result.payload
 						for playlist in playlists:
-							if not playlist["is_auto_playlist"]:
-								playlist_id = playlist["id"]
+							if not playlist.is_auto_playlist:
+								playlist_id = playlist.id
 								selected = options[playlist_id]
 								if not in_playlists[playlist_id] and selected == True:
 									self.library_service.add_song_to_playlist(song_id, playlist_id)
@@ -559,21 +558,19 @@ class TerminalJukeBox(App):
 					elif result.action == SongAction.REMOVE:
 						await self.remove_song_from_playlist(song_id, self.playlist_id)
 
-			self.push_screen(SongSubMenu(SongInfo(curr_song["id"], curr_song["title"],
-										 curr_song["artist"], curr_song["album"],
-										 curr_song["genres"], curr_song["file_path"]), song_playlists, False, is_auto_playlist), sub_menu_task)
+			self.push_screen(SongSubMenu(curr_song, song_playlists, False, is_auto_playlist), sub_menu_task)
 
 	def _play_selected_song(self, song_id: int, view: str ="") -> None:
 		self.music_player.set_song_idx(song_id)
 		self.music_player.set_play()
 		self._load_song(view)
 
-	async def delete_selected_song(self, curr_song, idx: int) -> None:
-		self.library_service.delete_song(curr_song["id"])
+	async def delete_selected_song(self, curr_song: SongInfo, idx: int) -> None:
+		self.library_service.delete_song(curr_song.id)
 		if len(self.all_songs) > 0:
 			self.all_songs.pop(idx)
 			music_table = self.query_one("#music-table", MusicTable)
-			music_table.remove_row(RowKey(curr_song["id"]))
+			music_table.remove_row(RowKey(curr_song.id))
 
 	async def remove_song_from_playlist(self, song_id: int, playlist_id: int):
 		self.library_service.remove_song_from_playlist(song_id, playlist_id)
@@ -581,13 +578,16 @@ class TerminalJukeBox(App):
 		if self.playlist_id == playlist_id:
 			if len(self.playlist_songs_active) > 0:
 				for i, song in enumerate(self.playlist_songs_active):
-					if song["id"] == song_id:
+					if song.id == song_id:
 						self.playlist_songs_active.pop(i)
 						break
+				playlist_table = self.query_one("#songs-playlist-table", MusicTable)
+				playlist_table.clear_songs()
+				playlist_table.set_songs(self.playlist_songs_active)
 
 			if len(self.playlist_songs_view) > 0:
 				for i, song in enumerate(self.playlist_songs_view):
-					if song["id"] == song_id:
+					if song.id == song_id:
 						self.playlist_songs_view.pop(i)
 						break
 				playlist_table = self.query_one("#songs-playlist-table", MusicTable)
@@ -610,7 +610,7 @@ class TerminalJukeBox(App):
 					btn.label = "\u23f8 Pause"
 					self.play_all_songs = False
 					self.playlist_songs_active = self.playlist_songs_view
-					self.music_player.set_song_idx(self.playlist_songs_active[0]["id"])
+					self.music_player.set_song_idx(self.playlist_songs_active[0].id)
 					self.music_player.set_play()
 					self._load_song("playlist-view")
 			else:

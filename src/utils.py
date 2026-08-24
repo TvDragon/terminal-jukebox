@@ -1,6 +1,6 @@
 from hashlib import sha256
 
-from models.model import Comparison, And, Or, Expression
+from models.model import Comparison, And, Or, Expression, SongInfo
 
 import re
 import unicodedata
@@ -64,11 +64,18 @@ def normalize(value: str) -> str:
 	# casefold() is more robust than lower() for case-insensitive matching.
 	return value.strip().casefold()
 
-def evaluate_comparison(comparison: Comparison, song: object) -> bool:
+def evaluate_comparison(comparison: Comparison, song: SongInfo) -> bool:
 	search_value = normalize(comparison.value)
+	field = comparison.field
 
-	if comparison.field == "title" or comparison.field == "artist" or comparison.field == "album":
-		song_value = normalize(song[comparison.field])
+	if field == "title" or field == "artist" or field == "album":
+		song_value = None
+		if field == "title":
+			song_value = normalize(song.title)
+		elif field == "artist":
+			song_value = normalize(song.artist)
+		elif field == "album":
+			song_value = normalize(song.album)
 
 		if comparison.operator == "=":
 			return song_value == search_value
@@ -85,7 +92,7 @@ def evaluate_comparison(comparison: Comparison, song: object) -> bool:
 	elif comparison.field == "genre":
 		song_genres = {
 			normalize(genre)
-			for genre in song["genres"].split(";")
+			for genre in song.genres.split(";")
 			if genre.strip()
 		}
 
@@ -112,7 +119,7 @@ def evaluate_comparison(comparison: Comparison, song: object) -> bool:
 		)
 
 
-def evaluate(expression: Expression, song: object) -> bool:
+def evaluate(expression: Expression, song: SongInfo) -> bool:
 	if isinstance(expression, Comparison):
 		return evaluate_comparison(expression, song)
 
@@ -247,7 +254,7 @@ def parse_filter(filter_text: str) -> Expression:
 	parser = FilterParser(tokens)
 	return parser.parse()
 
-def search_songs(songs: list[object], filter_text: str) -> list:
+def search_songs(songs: list[SongInfo], filter_text: str) -> list:
 	expression = parse_filter(filter_text)
 	return [ song for song in songs if evaluate(expression, song) ]
 

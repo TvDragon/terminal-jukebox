@@ -2,26 +2,33 @@ from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 
-from models.model import Node
+from models.model import Node, FoldersScannedInfo, PlaylistInfo, SongInfo
 from services.database_handler import SQL_Connector
 
 from utils import calculate_hash, build_music_query
 
 import os
-import sqlite3
 
 class LibaryService:
 	def __init__(self):
 		self.sql_db_connector = SQL_Connector()
 
-	def get_all_songs(self) -> list:
-		return self.sql_db_connector.get_all_songs()
+	def get_all_songs(self) -> list[SongInfo]:
+		results = self.sql_db_connector.get_all_songs()
+		all_songs = []
+		for song in results:
+			all_songs.append(SongInfo(song["id"], song["title"], song["artist"],
+							 	song["album"], song["genres"], song["duration_ms"],
+								song["file_path"]))
+		return all_songs
 
 	def add_playlist(self, playlist_name: str, is_auto_playlist: int, advanced_filter: str) -> None:
 		self.sql_db_connector.add_playlist(playlist_name, is_auto_playlist, advanced_filter)
 
-	def get_playlist(self, playlist_name: str) -> sqlite3.Row:
-		return self.sql_db_connector.get_playlist(playlist_name)
+	def get_playlist(self, playlist_name: str) -> PlaylistInfo:
+		result = self.sql_db_connector.get_playlist(playlist_name)
+		return PlaylistInfo(result["id"], result["playlist_name"],
+					  result["is_auto_playlist"], result["advanced_filter"])
 
 	def update_playlist(self, playlist_id: int, playlist_name: str, advanced_filter: str) -> None:
 		self.sql_db_connector.update_playlist(playlist_id, playlist_name, advanced_filter)
@@ -29,11 +36,22 @@ class LibaryService:
 	def delete_playlist(self, playlist_id: int) -> None:
 		self.sql_db_connector.delete_playlist(playlist_id)
 	
-	def get_playlists(self) -> list:
-		return self.sql_db_connector.get_all_playlists()
+	def get_playlists(self) -> list[PlaylistInfo]:
+		results = self.sql_db_connector.get_all_playlists()
+		playlists = []
+		for playlist in results:
+			playlists.append(PlaylistInfo(playlist["id"], playlist["playlist_name"],
+					  			playlist["is_auto_playlist"], playlist["advanced_filter"]))
+		return playlists
 	
-	def get_playlist_songs(self, playlist_name) -> list:
-		return self.sql_db_connector.get_songs_in_playlist(playlist_name)
+	def get_playlist_songs(self, playlist_name) -> list[SongInfo]:
+		results = self.sql_db_connector.get_songs_in_playlist(playlist_name)
+		songs = []
+		for song in results:
+			songs.append(SongInfo(song["id"], song["title"], song["artist"],
+							 	song["album"], song["genres"], song["duration_ms"],
+								song["file_path"]))
+		return songs
 	
 	def add_music_folder(self, folder_path: str) -> None:
 		self.sql_db_connector.add_folder(folder_path, True)
@@ -41,8 +59,12 @@ class LibaryService:
 	def remove_music_folder(self, folder_path: str) -> None:
 		self.sql_db_connector.remove_folder(folder_path)
 	
-	def get_music_folders(self) -> list:
-		return self.sql_db_connector.get_folders()
+	def get_music_folders(self) -> list[FoldersScannedInfo]:
+		results = self.sql_db_connector.get_folders()
+		folders = []
+		for result in results:
+			folders.append(FoldersScannedInfo(result["id"], result["folder_path"], result["is_checked"]))
+		return folders
 	
 	def check_folder_exists(self, folder_path: str) -> bool:
 		return self.sql_db_connector.check_folder_exists(folder_path)
@@ -51,8 +73,10 @@ class LibaryService:
 			  		duration_ms: int, file_path: str, file_hash: str) -> None:
 		self.sql_db_connector.add_song(title, artist, album, genres, duration_ms, file_path, file_hash)
 
-	def get_song(self, id: int) -> object:
-		return self.sql_db_connector.get_song(id)
+	def get_song(self, id: int) -> SongInfo:
+		song = self.sql_db_connector.get_song(id)
+		return SongInfo(song["id"], song["title"], song["artist"], song["album"],
+				  	song["genres"], song["duration_ms"], song["file_path"])
 
 	def edit_song(self, id: int, title: str, artist: str, album: str, genres: str, file_path: str) -> None:
 		success = self.sql_db_connector.edit_song(id, title, artist, album, genres)
@@ -78,12 +102,12 @@ class LibaryService:
 	def remove_song_from_playlist(self, song_id: int, playlist_id: int) -> None:
 		self.sql_db_connector.remove_song_from_playlist(song_id, playlist_id)
 
-	def get_playlists_for_song(self, song_id: int, playlists: list) -> dict:
+	def get_playlists_for_song(self, song_id: int, playlists: list[PlaylistInfo]) -> dict:
 		results_dict = {}
 		
 		for playlist in playlists:
-			in_playlist = self.sql_db_connector.is_song_in_playlist(song_id, playlist["id"])
-			results_dict[playlist["id"]] = in_playlist
+			in_playlist = self.sql_db_connector.is_song_in_playlist(song_id, playlist.id)
+			results_dict[playlist.id] = in_playlist
 		return results_dict
 	
 	def add_songs_from_folder(self, path) -> None:
@@ -147,7 +171,12 @@ class LibaryService:
 					for file_path in all_files:
 						stack.append(Node(curr_path, file_path))
 
-	def get_playlist_advanced_filter(self, filter_text: str) -> list[sqlite3.Row]:
+	def get_playlist_advanced_filter(self, filter_text: str) -> list[SongInfo]:
 		sql, parameters = build_music_query(filter_text)
-		songs = self.sql_db_connector.search_music(sql, parameters)
+		results = self.sql_db_connector.search_music(sql, parameters)
+		songs = []
+		for song in results:
+			songs.append(SongInfo(song["id"], song["title"], song["artist"],
+							 	song["album"], song["genres"], song["duration_ms"],
+								song["file_path"]))
 		return songs

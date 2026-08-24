@@ -5,6 +5,8 @@ from textual.widgets import (
 	Static,
 )
 
+from models.model import SongInfo
+
 # --- Music Table View --------------------------------------------------------
 
 class MusicTable(DataTable):
@@ -23,12 +25,12 @@ class MusicTable(DataTable):
 	def clear_songs(self):
 		self.clear(columns=False)
 	
-	def set_songs(self, songs):
+	def set_songs(self, songs: list[SongInfo]):
 		for song in songs:
-			minutes = int((song["duration_ms"] / 1000) / 60)
-			seconds = int((song["duration_ms"] / 1000) % 60)
+			minutes = int((song.duration_ms / 1000) / 60)
+			seconds = int((song.duration_ms / 1000) % 60)
 			song_duration = "{}:{:02d}".format(minutes, seconds)
-			self.add_row(song["id"], song["title"], song["artist"], song["album"], song["genres"], song_duration, key=song["id"])
+			self.add_row(song.id, song.title, song.artist, song.album, song.genres, song_duration, key=song.id)
 
 # --- Playlist Button Widget --------------------------------------------------
 

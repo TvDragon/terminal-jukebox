@@ -1,5 +1,7 @@
 from just_playback import Playback
 
+from models.model import SongInfo
+
 class MusicPlayer:
 	def __init__(self):
 		self.playback = Playback()
@@ -66,7 +68,7 @@ class MusicPlayer:
 	def get_song_idx(self) -> int:
 		return self.song_idx
 	
-	def load_song(self, song) -> None:
+	def load_song(self, song: SongInfo) -> None:
 		self.current_position = 0
-		self.playback.load_file(song["file_path"])
-		self.duration = int(song["duration_ms"] / 1000)
+		self.playback.load_file(song.file_path)
+		self.duration = int(song.duration_ms / 1000)

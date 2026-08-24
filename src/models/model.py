@@ -30,7 +30,21 @@ class SongInfo:
 	artist:	str
 	album:	str
 	genres:	str
+	duration_ms: int
 	file_path: str
+
+@dataclass
+class PlaylistInfo:
+	id: int
+	playlist_name: str
+	is_auto_playlist: bool
+	advanced_filter: str
+
+@dataclass
+class FoldersScannedInfo:
+	id: int
+	folder_path: str
+	is_checked: int
 
 @dataclass
 class Node:

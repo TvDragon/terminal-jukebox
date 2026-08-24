@@ -23,7 +23,7 @@ from textual.widgets import (
 )
 from textual.widgets.selection_list import Selection
 
-from models.model import SongAction, SongMenuResult, SongInfo, PlaylistAction, PlaylistMenuResult
+from models.model import SongAction, SongMenuResult, SongInfo, PlaylistAction, PlaylistMenuResult, FoldersScannedInfo
 from utils import calculate_hash
 
 import os
@@ -118,7 +118,7 @@ class ScanFoldersWidget(ModalScreen[list | None]):
 	}
 	"""
 
-	def __init__(self, music_folders) -> None:
+	def __init__(self, music_folders: list[FoldersScannedInfo]) -> None:
 		super().__init__()
 		self.music_folders = music_folders
 		self.temp_added_folders = []
@@ -128,9 +128,9 @@ class ScanFoldersWidget(ModalScreen[list | None]):
 		await music_folders_widgets.remove_children()
 
 		for folder in self.music_folders:
-			music_folders_widgets.mount(Checkbox(folder["folder_path"], folder["is_checked"],
+			music_folders_widgets.mount(Checkbox(folder.folder_path, folder.is_checked,
 											classes="folder-checkbox",
-											id="folder-checkbox-{}".format(calculate_hash(folder["folder_path"], True))))
+											id="folder-checkbox-{}".format(calculate_hash(folder.folder_path, True))))
 			
 		for folder in self.temp_added_folders:
 			music_folders_widgets.mount(Checkbox(folder, True,
@@ -155,7 +155,7 @@ class ScanFoldersWidget(ModalScreen[list | None]):
 		async def selected_folders(folder_path: str | None) -> None:
 			if folder_path is not None:
 				if os.path.isdir(folder_path):
-					if any(str(folder_path) in folder["folder_path"] for folder in self.music_folders):
+					if any(str(folder_path) in folder.folder_path for folder in self.music_folders):
 						return
 
 					if folder_path not in self.temp_added_folders:
@@ -165,12 +165,12 @@ class ScanFoldersWidget(ModalScreen[list | None]):
 		self.app.push_screen(FolderDialog(), selected_folders)
 
 	@on(Button.Pressed, "#btn-scan-yes")
-	def on_confirm(self) -> list:
+	def on_confirm(self) -> None:
 		updated_music_folders = []
 
 		for folder in self.music_folders:
-			checkbox = self.query_one("#folder-checkbox-{}".format(calculate_hash(folder["folder_path"], True)))
-			updated_music_folders.append({"folder_path": folder["folder_path"], "checked": checkbox.value})
+			checkbox = self.query_one("#folder-checkbox-{}".format(calculate_hash(folder.folder_path, True)))
+			updated_music_folders.append({"folder_path": folder.folder_path, "checked": checkbox.value})
 
 		for folder_path in self.temp_added_folders:
 			checkbox = self.query_one("#folder-checkbox-{}".format(calculate_hash(folder_path, True)))
