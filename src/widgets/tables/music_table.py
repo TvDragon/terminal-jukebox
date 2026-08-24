@@ -1,0 +1,28 @@
+from textual.widgets import DataTable
+
+from models.song import SongInfo
+
+# --- Music Table View --------------------------------------------------------
+
+class MusicTable(DataTable):
+
+	def on_mount(self):
+		self.cursor_type = "row"
+		self.zebra_stripes = True
+
+		self.add_column("ID", key="id", width=6)
+		self.add_column("Title", key="title", width=35)
+		self.add_column("Artist", key="artist", width=15)
+		self.add_column("Album", key="album", width=15)
+		self.add_column("Genres", key="genres", width=15)
+		self.add_column("Duration", key="duration", width=8)
+
+	def clear_songs(self):
+		self.clear(columns=False)
+	
+	def set_songs(self, songs: list[SongInfo]):
+		for song in songs:
+			minutes = int((song.duration_ms / 1000) / 60)
+			seconds = int((song.duration_ms / 1000) % 60)
+			song_duration = "{}:{:02d}".format(minutes, seconds)
+			self.add_row(song.id, song.title, song.artist, song.album, song.genres, song_duration, key=song.id)

@@ -2,10 +2,15 @@ from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 
-from models.model import Node, FoldersScannedInfo, PlaylistInfo, SongInfo
-from services.database_handler import SQL_Connector
+from database.sql_connector import SQL_Connector
 
-from utils import calculate_hash, build_music_query
+from models.abstract_syntax_tree import Node
+from models.music_folders import MusicFoldersInfo
+from models.playlist import PlaylistInfo
+from models.song import SongInfo
+
+from utils.hashing import calculate_hash
+from utils.search_filter import build_music_query
 
 import os
 
@@ -59,11 +64,11 @@ class LibaryService:
 	def remove_music_folder(self, folder_path: str) -> None:
 		self.sql_db_connector.remove_folder(folder_path)
 	
-	def get_music_folders(self) -> list[FoldersScannedInfo]:
+	def get_music_folders(self) -> list[MusicFoldersInfo]:
 		results = self.sql_db_connector.get_folders()
 		folders = []
 		for result in results:
-			folders.append(FoldersScannedInfo(result["id"], result["folder_path"], result["is_checked"]))
+			folders.append(MusicFoldersInfo(result["id"], result["folder_path"], result["is_checked"]))
 		return folders
 	
 	def check_folder_exists(self, folder_path: str) -> bool:
@@ -170,6 +175,15 @@ class LibaryService:
 					all_files = os.listdir(curr_path)
 					for file_path in all_files:
 						stack.append(Node(curr_path, file_path))
+
+	def scan_music_folders(self, music_folders: list) -> None:
+		for folder in music_folders:
+			if folder["checked"] == True:
+				if not self.check_folder_exists(folder["folder_path"]):
+					self.add_music_folder(folder["folder_path"])
+				self.add_songs_from_folder(folder["folder_path"])
+			elif self.check_folder_exists(folder["folder_path"]) and folder["checked"] == False:
+				self.remove_music_folder(folder["folder_path"])
 
 	def get_playlist_advanced_filter(self, filter_text: str) -> list[SongInfo]:
 		sql, parameters = build_music_query(filter_text)

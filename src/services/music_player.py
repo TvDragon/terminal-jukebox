@@ -1,6 +1,6 @@
 from just_playback import Playback
 
-from models.model import SongInfo
+from models.song import SongInfo
 
 class MusicPlayer:
 	def __init__(self):

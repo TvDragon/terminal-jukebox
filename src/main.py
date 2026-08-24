@@ -4,14 +4,10 @@ from textual.binding import Binding
 from textual.containers import (
 	Container,
 	Horizontal,
-	HorizontalGroup,
 	Vertical,
-	VerticalGroup,
 	VerticalScroll
 )
 from textual.widgets._data_table import RowKey
-from textual_slider import Slider
-from textual.suggester import Suggester
 from textual.widgets import (
 	Button,
 	Checkbox,
@@ -20,57 +16,35 @@ from textual.widgets import (
 	Header,
 	Input,
 	Label,
-	RadioButton,
-	RadioSet,
-	RichLog,
-	SelectionList,
 	Static,
 	TabbedContent,
 	TabPane,
 )
-from textual.widgets.selection_list import Selection
 
-from models.model import SongAction, SongMenuResult, SongPlaylists, SongInfo, PlaylistAction, PlaylistMenuResult, PlaylistInfo
-from services.database_handler import SQL_Connector
+from models.playlist_menu_result import PlaylistAction, PlaylistMenuResult
+from models.song_menu_result import SongAction, SongMenuResult
+from models.song_playlists import SongPlaylists
+from models.song import SongInfo
+
 from services.library_service import LibaryService
 from services.music_player import MusicPlayer
-from widgets.widgets import MusicTable, PlaylistButton
-from widgets.popups import ScanFoldersWidget, DeleteFilePopup, SongSubMenu, LoadingScreen, NewPlaylistPopup, PlaylistSubMenu, ErrorPopup
-from utils import normalise_text, search_songs
+
+from screens.create_playlist_screen import NewPlaylistPopup
+from screens.delete_file_screen import DeleteFilePopup
+from screens.error_screen import ErrorPopup
+from screens.loading_screen import LoadingScreen
+from screens.playlist_submenu_screen import PlaylistSubMenu
+from screens.scan_folders_screen import ScanFoldersWidget
+from screens.song_submenu_screen import SongSubMenu
+
+from widgets.buttons.playlist_button import PlaylistButton
+from widgets.tables.music_table import MusicTable
+from widgets.progress_bar import make_progress_bar_timer, render_volume_bar
+
+from utils.normalize_text import normalize_text
+from utils.search_filter import search_songs
 
 import os
-
-def make_bar(current: int, max: int, width: int) -> str:
-	if max != 0:
-		ratio = current / max
-		filled = int(ratio * width)
-		empty = width - filled
-		return f"[{'█' * filled}{'-' * empty}]"
-
-	return f"[{'-' * width}]"
-
-def make_progress_bar_timer(current: int, duration: int, width: int=50) -> str:
-	bar = make_bar(current, duration, width)
-	progress_bar = "{}:{:02d} {} {}:{:02d}".format(int(current / 60),
-													int(current % 60),
-													bar,
-													int(duration / 60),
-													int(duration % 60))
-	return progress_bar
-
-def render_volume_bar(volume: int) -> str:
-	total = 20
-
-	filled = int((volume / 100) * total)
-	empty = total - filled
-
-	return (
-			"[bold]��[/bold]"
-			f"[green]{'─' * (filled - 1)}[green]"
-			"[bold green]\u25a0[/bold green]"
-			f"[grey]{'─' * empty}[grey]"
-			f" {volume}%"
-		)
 
 # --- Main Application --------------------------------------------------------
 
@@ -96,7 +70,7 @@ class TerminalJukeBox(App):
 		self.playlist_songs_active = []
 		self.playlist_songs_view = []
 		self.playlist_name = self.playlists[0].playlist_name if len(self.playlists) > 0 else None
-		self.playlist_id = self.playlists[0].id if len(self.playlists) > 0 else -1	
+		self.playlist_id = self.playlists[0].id if len(self.playlists) > 0 else -1
 		self.current_tab = ""
 		self.play_all_songs = True	# All songs library or specific playlist to play
 		self.btn_num_pressed = 0
@@ -338,24 +312,18 @@ class TerminalJukeBox(App):
 	@on(Button.Pressed, "#btn-scan")
 	def pressed_scan_files(self) -> None:
 
-		def scan_folders(new_music_folders: (list[dict] | None)) -> None:
-			if new_music_folders:
-				self._scan_selected_folders(new_music_folders)
+		def scan_folders(music_folders: (list[dict] | None)) -> None:
+			if music_folders:
+				self._scan_selected_folders(music_folders)
 
 		self.push_screen(ScanFoldersWidget(self.library_service.get_music_folders()), scan_folders)
 
 	@work(thread=True)
-	def _scan_selected_folders(self, new_music_folders) -> None:
+	def _scan_selected_folders(self, music_folders) -> None:
 		self.call_from_thread(self.push_screen, LoadingScreen())
 
-		for folder in new_music_folders:
-			if folder["checked"] == True:
-				if not self.library_service.check_folder_exists(folder["folder_path"]):
-					self.library_service.add_music_folder(folder["folder_path"])
-				self.library_service.add_songs_from_folder(folder["folder_path"])
-			elif self.library_service.check_folder_exists(folder["folder_path"]) and folder["checked"] == False:
-				self.library_service.remove_music_folder(folder["folder_path"])
-		
+		self.library_service.scan_music_folders(music_folders)
+
 		self.call_from_thread(self._scan_finished)
 
 	def _scan_finished(self) -> None:
@@ -382,18 +350,18 @@ class TerminalJukeBox(App):
 		is_advanced_search = checkbox.value
 
 		if not is_advanced_search:
-			searched_music = normalise_text(event.value)
+			searched_music = normalize_text(event.value)
 
 			results = []
 			table = None
 			if self.current_tab == "tab-music":
 				for song in self.all_songs:
-					if searched_music in normalise_text(song.title):
+					if searched_music in normalize_text(song.title):
 						results.append(song)
 				table = self.query_one("#music-table", MusicTable)
 			elif self.current_tab == "tab-playlists":
 				for song in self.playlist_songs_view:
-					if searched_music.lower() in normalise_text(song.title):
+					if searched_music.lower() in normalize_text(song.title):
 						results.append(song)
 				table = self.query_one("#songs-playlist-table", MusicTable)
 			table.clear_songs()
