@@ -69,7 +69,8 @@ class ScanFoldersWidget(ModalScreen[list | None]):
 						return
 
 					if folder_path not in self.temp_added_folders:
-						self.temp_added_folders.append(str(folder_path) + "/")
+						slash = "/" if "/" in str(folder_path) else "\\"
+						self.temp_added_folders.append(str(folder_path) + slash)
 					await self.update_music_folders()
 
 		self.app.push_screen(FolderDialog(), selected_folders)

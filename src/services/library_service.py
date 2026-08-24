@@ -170,7 +170,7 @@ class LibaryService:
 				if not self.check_song_exists(file_hash):
 					self.add_song(title, artist, album, genres, duration, file_path, file_hash)
 			else:
-				curr_path += "/"
+				curr_path += ("/" if "/" in curr_path else "\\")
 				if os.path.isdir(curr_path):
 					all_files = os.listdir(curr_path)
 					for file_path in all_files:
