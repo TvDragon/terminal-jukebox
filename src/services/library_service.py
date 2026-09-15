@@ -115,8 +115,9 @@ class LibaryService:
 			results_dict[playlist.id] = in_playlist
 		return results_dict
 	
-	def add_songs_from_folder(self, path) -> None:
+	def add_songs_from_folder(self, path) -> int:
 		all_files = os.listdir(f"{path}")
+		added_num_songs = 0
 
 		visited = set()
 		stack = []
@@ -169,6 +170,7 @@ class LibaryService:
 
 				if not self.check_song_exists(file_hash):
 					self.add_song(title, artist, album, genres, duration, file_path, file_hash)
+					added_num_songs += 1
 			else:
 				curr_path += ("/" if "/" in curr_path else "\\")
 				if os.path.isdir(curr_path):
@@ -176,14 +178,19 @@ class LibaryService:
 					for file_path in all_files:
 						stack.append(Node(curr_path, file_path))
 
-	def scan_music_folders(self, music_folders: list) -> None:
+		return added_num_songs
+
+	def scan_music_folders(self, music_folders: list) -> int:
+		num_new_songs = 0
 		for folder in music_folders:
 			if folder["checked"] == True:
 				if not self.check_folder_exists(folder["folder_path"]):
 					self.add_music_folder(folder["folder_path"])
-				self.add_songs_from_folder(folder["folder_path"])
+				num_new_songs += self.add_songs_from_folder(folder["folder_path"])
 			elif self.check_folder_exists(folder["folder_path"]) and folder["checked"] == False:
 				self.remove_music_folder(folder["folder_path"])
+
+		return num_new_songs
 
 	def get_playlist_advanced_filter(self, filter_text: str) -> list[SongInfo]:
 		sql, parameters = build_music_query(filter_text)

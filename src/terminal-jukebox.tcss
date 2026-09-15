@@ -175,6 +175,10 @@ Label {
     margin: 0 2 0 0;
 }
 
+#msg-static {
+    text-align: center;
+}
+
 /* --- Folder Dialog --- */
 
 #scan-folders-widget, #folder-dialog, #delete-popup {

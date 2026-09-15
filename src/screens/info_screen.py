@@ -10,11 +10,11 @@ from textual.widgets import (
 	Static,
 )
 
-class ConfirmDialog(ModalScreen[bool]):
-	"""A modal confirmation dialog."""
+class InfoDialog(ModalScreen[bool]):
+	"""A modal information dialog."""
 
 	DEFAULT_CSS = """
-	ConfirmDialog {
+	InfoDialog {
 		align: center middle;
 	}
 	"""
@@ -27,13 +27,8 @@ class ConfirmDialog(ModalScreen[bool]):
 		with Container(id="confirm-dialog"):
 			yield Static(self.message, id="msg-static")
 			with Horizontal(classes="dialog-buttons"):
-				yield Button("Confirm", variant="success", id="confirm-yes")
-				yield Button("Cancel", variant="error", id="confirm-no")
+				yield Button("Ok", variant="success", id="ok-yes")
 
-	@on(Button.Pressed, "#confirm-yes")
-	def on_confirm(self) -> None:
+	@on(Button.Pressed, "#ok-yes")
+	def on_ok(self) -> None:
 		self.dismiss(True)
-
-	@on(Button.Pressed, "#confirm-no")
-	def on_cancel(self) -> None:
-		self.dismiss(False)

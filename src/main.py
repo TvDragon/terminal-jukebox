@@ -32,6 +32,7 @@ from services.music_player import MusicPlayer
 from screens.create_playlist_screen import NewPlaylistPopup
 from screens.delete_file_screen import DeleteFilePopup
 from screens.error_screen import ErrorPopup
+from screens.info_screen import InfoDialog
 from screens.loading_screen import LoadingScreen
 from screens.playlist_submenu_screen import PlaylistSubMenu
 from screens.scan_folders_screen import ScanFoldersWidget
@@ -322,14 +323,15 @@ class TerminalJukeBox(App):
 	def _scan_selected_folders(self, music_folders) -> None:
 		self.call_from_thread(self.push_screen, LoadingScreen())
 
-		self.library_service.scan_music_folders(music_folders)
+		num_new_songs = self.library_service.scan_music_folders(music_folders)
 
-		self.call_from_thread(self._scan_finished)
+		self.call_from_thread(self._scan_finished, num_new_songs)
 
-	def _scan_finished(self) -> None:
+	def _scan_finished(self, num_new_songs) -> None:
 		self._update_music_table()
 		self.pop_screen()
-
+		self.push_screen(InfoDialog("{} songs were added.".format(num_new_songs)))
+		
 	# --- Create New Playlist Button -------------------------------------------
 
 	@on(Button.Pressed, "#btn-create-playlist")
