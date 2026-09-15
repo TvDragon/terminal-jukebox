@@ -111,8 +111,10 @@ class TerminalJukeBox(App):
 		self.all_songs = self.library_service.get_all_songs()
 		music_table.set_songs(self.all_songs)
 
-	def _load_songs(self) -> None:
-		self.all_songs = self.library_service.get_all_songs()
+	def _update_playlists_music_table(self) -> None:
+		table = self.query_one("#songs-playlist-table", MusicTable)
+		table.clear_songs()
+		table.set_songs(self.playlist_songs_view)
 
 	def _load_playlist_view(self) -> None:
 		if self.playlist_name != None:
@@ -125,6 +127,8 @@ class TerminalJukeBox(App):
 					self.push_screen(ErrorPopup(error_msg))
 			else:
 				self.playlist_songs_view = self.library_service.get_playlist_songs(self.playlist_name)
+		else:
+			self.playlist_songs_view = []
 
 	def _stop_and_reset(self) -> None:
 		self.music_player.reset_position()
@@ -196,9 +200,7 @@ class TerminalJukeBox(App):
 							elif len(self.playlist_songs_active) > 0:
 									self._load_playlist_view()
 									self.playlist_songs_active = self.playlist_songs_view
-									playlist_table = self.query_one("#songs-playlist-table", MusicTable)
-									playlist_table.clear_songs()
-									playlist_table.set_songs(self.playlist_songs_view)
+									self._update_playlists_music_table()
 
 				self._stop_and_reset()
 				self.push_screen(DeleteFilePopup("File does not exist: {}".format(curr_song.file_path)), delete_song)
@@ -301,10 +303,8 @@ class TerminalJukeBox(App):
 		if tab_id == "tab-music":
 			self._update_music_table()
 		elif tab_id == "tab-playlists":
-			table = self.query_one("#songs-playlist-table", MusicTable)
 			self._load_playlist_view()
-			table.clear_songs()
-			table.set_songs(self.playlist_songs_view)
+			self._update_playlists_music_table()
 		self.current_tab = tab_id
 
 	# --- Scan Music Folders Button -------------------------------------------
@@ -585,11 +585,9 @@ class TerminalJukeBox(App):
 				try:
 					self.playlist_name = playlist_widget.playlist_name
 					self.playlist_id = playlist_widget.playlist_id
-					self._load_playlist_view()
 
-					playlist_table = self.query_one("#songs-playlist-table", MusicTable)
-					playlist_table.clear_songs()
-					playlist_table.set_songs(self.playlist_songs_view)
+					self._load_playlist_view()
+					self._update_playlists_music_table()
 					self.btn_num_pressed = 0
 				except ValueError as e:
 					error_msg = "Error for playlist: {}\n{}".format(self.playlist_name, str(e))
@@ -607,16 +605,19 @@ class TerminalJukeBox(App):
 						new_advanced_filter = result.payload["advanced_filter"]
 						self.library_service.update_playlist(playlist_id, new_playlist_name, new_advanced_filter)
 						await self._update_playlists_view()
-						table = self.query_one("#songs-playlist-table", MusicTable)
 						self.playlist_name = new_playlist_name
+
 						self._load_playlist_view()
-						table.clear_songs()
-						table.set_songs(self.playlist_songs_view)
+						self._update_playlists_music_table()
 					elif result.action == PlaylistAction.DELETE:
 						self.library_service.delete_playlist(playlist_id)	# CASCADE delete rows in SONGS_PLAYLISTS that have this playlist_id
 						await self._update_playlists_view()
 						if playlist_id == self.playlist_id:
 							self.playlist_id = -1
+							self.playlist_name = None
+
+							self._load_playlist_view()
+							self._update_playlists_music_table()
 
 			self.push_screen(PlaylistSubMenu(playlist_name, playlist_advanced_filter), sub_menu_task)	
 			
