@@ -44,6 +44,7 @@ from widgets.progress_bar import make_progress_bar_timer, render_volume_bar
 
 from utils.normalize_text import normalize_text
 from utils.search_filter import search_songs
+from utils import logger
 
 import os
 
@@ -64,6 +65,8 @@ class TerminalJukeBox(App):
 
 	def __init__(self):
 		super().__init__()
+		logger.setup()
+		
 		self.library_service = LibaryService()
 		self.music_player = MusicPlayer()
 		self.all_songs = self.library_service.get_all_songs()

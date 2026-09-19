@@ -16,7 +16,7 @@ from textual.widgets import (
 
 from models.music_folders import MusicFoldersInfo
 
-from utils.hashing import calculate_hash
+from utils.hashing import calculate_string_hash
 
 import os
 
@@ -40,12 +40,12 @@ class ScanFoldersWidget(ModalScreen[list | None]):
 		for folder in self.music_folders:
 			music_folders_widgets.mount(Checkbox(folder.folder_path, folder.is_checked,
 											classes="folder-checkbox",
-											id="folder-checkbox-{}".format(calculate_hash(folder.folder_path, True))))
+											id="folder-checkbox-{}".format(calculate_string_hash(folder.folder_path))))
 			
 		for folder in self.temp_added_folders:
 			music_folders_widgets.mount(Checkbox(folder, True,
 											classes="folder-checkbox",
-											id="folder-checkbox-{}".format(calculate_hash(folder, True))))
+											id="folder-checkbox-{}".format(calculate_string_hash(folder))))
 
 	async def on_mount(self) -> None:
 		await self.update_music_folders()
@@ -80,11 +80,11 @@ class ScanFoldersWidget(ModalScreen[list | None]):
 		updated_music_folders = []
 
 		for folder in self.music_folders:
-			checkbox = self.query_one("#folder-checkbox-{}".format(calculate_hash(folder.folder_path, True)))
+			checkbox = self.query_one("#folder-checkbox-{}".format(calculate_string_hash(folder.folder_path)))
 			updated_music_folders.append({"folder_path": folder.folder_path, "checked": checkbox.value})
 
 		for folder_path in self.temp_added_folders:
-			checkbox = self.query_one("#folder-checkbox-{}".format(calculate_hash(folder_path, True)))
+			checkbox = self.query_one("#folder-checkbox-{}".format(calculate_string_hash(folder_path)))
 			updated_music_folders.append({"folder_path": folder_path, "checked": checkbox.value})
 		
 		self.temp_added_folders.clear()

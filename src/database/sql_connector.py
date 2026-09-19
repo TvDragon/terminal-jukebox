@@ -1,6 +1,8 @@
 import sqlite3
 import os
 
+from utils import logger
+
 class SQL_Connector:
 	def __init__(self, database="./music-library.db"):
 		flag = os.path.isfile(database)
@@ -78,16 +80,14 @@ class SQL_Connector:
 	def execute(self, sql_string: str, params: tuple =()) -> bool:
 		try:
 			self.db_cursor.execute(sql_string, params)
-			print("-----")
-			print("SQL Query: {}".format(sql_string))
-			print("Params: {}".format(params))
-			print("-----\n")
+			info_msg = "SQL Query: {}".format(sql_string) + \
+						"Params: {}\n".format(params)
+			logger.log_msg(info_msg)
 		except Exception as e:
-			print("-----")
-			print("Failed SQL Query:{}\n".format(sql_string))
-			print("Param: {}".format(params))
-			print("Error: {}".format(e))
-			print("-----\n")
+			error_msg = "Failed SQL Query:{}".format(sql_string) + \
+						"Param: {}\n".format(params) + \
+						"Error: {}\n".format(e)
+			logger.log_error(error_msg)
 			return False
 
 		return True
@@ -323,7 +323,6 @@ class SQL_Connector:
 
 				song = self.db_cursor.fetchone()
 				songs.append(song)
-				print(f"Song: {song["title"]}\n{song["artist"]}\n{song["genres"]}")
 
 		return songs
 

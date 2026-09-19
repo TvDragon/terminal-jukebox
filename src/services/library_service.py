@@ -9,8 +9,9 @@ from models.music_folders import MusicFoldersInfo
 from models.playlist import PlaylistInfo
 from models.song import SongInfo
 
-from utils.hashing import calculate_hash
+from utils.hashing import calculate_file_hash
 from utils.search_filter import build_music_query
+from utils import logger
 
 import os
 
@@ -85,7 +86,6 @@ class LibaryService:
 
 	def edit_song(self, id: int, title: str, artist: str, album: str, genres: str, file_path: str) -> None:
 		success = self.sql_db_connector.edit_song(id, title, artist, album, genres)
-
 		if success:
 			audio = EasyID3(file_path)
 			audio["title"] = title
@@ -147,7 +147,7 @@ class LibaryService:
 				if "genre" in audio:
 					info += f" - Genre: {audio["genre"]}"
 				if info.startswith("No Metadata"):
-					print(info)
+					logger.log_warn(info)
 
 				title = ""
 				artist = ""
@@ -155,7 +155,7 @@ class LibaryService:
 				genres = ""
 				duration = int(audio_file.info.length * 1000)
 				file_path = curr_path
-				file_hash = calculate_hash(file_path)
+				file_hash = calculate_file_hash(file_path)
 				if "title" in audio:
 					title = audio["title"][0]
 				if "artist" in audio:
@@ -168,7 +168,7 @@ class LibaryService:
 						genres += "{};".format(genre)
 					genres = genres[0:len(genres) - 1]
 
-				if not self.check_song_exists(file_hash):
+				if not self.check_song_exists(file_hash):	# TODO: Check if file exist too. Not just hash
 					self.add_song(title, artist, album, genres, duration, file_path, file_hash)
 					added_num_songs += 1
 			else:

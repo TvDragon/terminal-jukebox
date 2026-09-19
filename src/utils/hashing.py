@@ -1,13 +1,17 @@
 from hashlib import sha256
 
-def calculate_hash(input_str: str, is_file_path: bool = False) -> str:
+def calculate_string_hash(input_str: str) -> str:
 	hasher = sha256()
 
-	if not is_file_path:
-		with open(input_str, "rb") as file:
-			while chunk := file.read(8192):
-				hasher.update(chunk)
-	else:
-		hasher.update(input_str.encode("utf-8"))
+	hasher.update(input_str.encode("utf-8"))
+
+	return hasher.hexdigest()
+
+def calculate_file_hash(path: str) -> str:
+	hasher = sha256()
+
+	with open(path, "rb") as file:
+		while chunk := file.read(8192):
+			hasher.update(chunk)
 
 	return hasher.hexdigest()
