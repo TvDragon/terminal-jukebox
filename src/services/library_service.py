@@ -13,8 +13,9 @@ from utils.hashing import calculate_acoustic_fingerprint_hash
 from utils.search_filter import build_music_query
 from utils import logger
 
-import os
 import acoustid
+import os
+import time
 
 class LibaryService:
 	def __init__(self):
@@ -119,7 +120,9 @@ class LibaryService:
 			results_dict[playlist.id] = in_playlist
 		return results_dict
 	
-	def add_songs_from_folder(self, path) -> int:
+	def add_songs_from_folder(self, path: str,
+								existing_filepaths: set,
+								existing_fingerprint_hashes: set) -> int:
 		all_files = os.listdir(f"{path}")
 		added_num_songs = 0
 
@@ -171,11 +174,11 @@ class LibaryService:
 						genres += "{};".format(genre)
 					genres = genres[0:len(genres) - 1]
 
-				if not self.check_song_exists_file_path(file_path):
+				if file_path not in existing_filepaths:
 					duration_sec, fingerprint = acoustid.fingerprint_file(file_path)
 					fingerprint_hash = calculate_acoustic_fingerprint_hash(fingerprint)
 
-					if not self.check_song_exists_fingerprint_hash(fingerprint_hash):
+					if fingerprint_hash not in existing_fingerprint_hashes:
 						self.add_song(title, artist, album, genres, duration, file_path, fingerprint_hash)
 						added_num_songs += 1
 			else:
@@ -189,12 +192,28 @@ class LibaryService:
 
 	def scan_music_folders(self, music_folders: list) -> int:
 		num_new_songs = 0
+
+		results = self.sql_db_connector.get_all_file_paths()
+		existing_paths = set([row["file_path"] for row in results])
+
+		results = self.sql_db_connector.get_all_fingerprint_hashes()
+		existing_fingerprint_hashes = set([row["fingerprint_hash"] for row in results])
+
 		for folder in music_folders:
 			if folder["checked"] == True:
+				logger.log_msg("Starting scan: {}".format(folder["folder_path"]))
 				if not self.check_folder_exists(folder["folder_path"]):
 					self.add_music_folder(folder["folder_path"])
-				num_new_songs += self.add_songs_from_folder(folder["folder_path"])
+				start = time.time()
+				new_songs = self.add_songs_from_folder(folder["folder_path"],
+												existing_paths,
+												existing_fingerprint_hashes)
+				end = time.time()
+				logger.log_msg("Added {} new songs".format(new_songs))
+				logger.log_msg("Scan completed in {:.02f} seconds\n".format(end - start))
+				num_new_songs += new_songs				
 			elif self.check_folder_exists(folder["folder_path"]) and folder["checked"] == False:
+				logger.log_msg("Removed folder: {}\n".format(folder["folder_path"]))
 				self.remove_music_folder(folder["folder_path"])
 
 		return num_new_songs

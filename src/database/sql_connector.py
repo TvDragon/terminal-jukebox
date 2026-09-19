@@ -80,9 +80,6 @@ class SQL_Connector:
 	def execute(self, sql_string: str, params: tuple =()) -> bool:
 		try:
 			self.db_cursor.execute(sql_string, params)
-			info_msg = "SQL Query: {}".format(sql_string) + \
-						"Params: {}\n".format(params)
-			logger.log_msg(info_msg)
 		except Exception as e:
 			error_msg = "Failed SQL Query:{}".format(sql_string) + \
 						"Param: {}\n".format(params) + \
@@ -173,33 +170,29 @@ class SQL_Connector:
 		
 		self.commit()
 		return True
+
+	def get_all_file_paths(self) -> list:
+		sql_query = """
+			SELECT file_path FROM SONGS
+		"""
+
+		self.execute(sql_query)
+
+		rows = self.db_cursor.fetchall()
+
+		return rows
+
+	def get_all_fingerprint_hashes(self) -> list:
+		sql_query = """
+			SELECT fingerprint_hash FROM SONGS
+		"""
+
+		self.execute(sql_query)
+
+		rows = self.db_cursor.fetchall()
+
+		return rows
 	
-	def check_song_exists_file_path(self, file_path: str) -> bool:
-		sql_query = """
-			SELECT 1 FROM SONGS
-			WHERE file_path=?
-			LIMIT 1
-		"""
-
-		self.execute(sql_query, (file_path,))
-
-		song = self.db_cursor.fetchone()
-
-		return song != None
-
-	def check_song_exists_fingerprint_hash(self, fingerprint_hash: str) -> bool:
-		sql_query = """
-			SELECT 1 FROM SONGS
-			WHERE fingerprint_hash=?
-			LIMIT 1
-		"""
-
-		self.execute(sql_query, (fingerprint_hash,))
-
-		song = self.db_cursor.fetchone()
-
-		return song != None
-
 	def add_playlist(self, playlist_name: str, is_auto_playlist: int, advanced_filter: str) -> bool:
 		
 		sql_query = """
