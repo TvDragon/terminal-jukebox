@@ -358,6 +358,7 @@ class SQL_Connector:
 			SELECT 1 FROM SONGS_PLAYLISTS
 			WHERE song_id=?
 			AND playlist_id=?
+			LIMIT 1
 		"""
 
 		self.execute(sql_query, (song_id, playlist_id))
@@ -410,8 +411,9 @@ class SQL_Connector:
 	def check_folder_exists(self, folder_path: str) -> bool:
 
 		sql_query = """
-			SELECT * FROM FOLDERS
+			SELECT 1 FROM FOLDERS
 			WHERE folder_path=?
+			LIMIT 1
 		"""
 
 		self.execute(sql_query, (folder_path,))
