@@ -7,11 +7,9 @@ def calculate_string_hash(input_str: str) -> str:
 
 	return hasher.hexdigest()
 
-def calculate_file_hash(path: str) -> str:
+def calculate_acoustic_fingerprint_hash(fingerprint: bytes) -> str:
 	hasher = sha256()
 
-	with open(path, "rb") as file:
-		while chunk := file.read(8192):
-			hasher.update(chunk)
+	hasher.update(fingerprint)
 
 	return hasher.hexdigest()

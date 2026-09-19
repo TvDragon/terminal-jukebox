@@ -37,7 +37,7 @@ class SQL_Connector:
 			genres				TEXT,
 			duration_ms			INTEGER,
 			file_path			TEXT	UNIQUE,
-			file_hash			TEXT	UNIQUE
+			fingerprint_hash	TEXT	UNIQUE
 		)""")
 
 		if not success:
@@ -101,14 +101,14 @@ class SQL_Connector:
 	# ----------------------------------------------------------------
 
 	def add_song(self, title: str, artist: str, album: str, genres: str,
-			  		duration_ms: int, file_path: str, file_hash: str) -> bool:
+			  		duration_ms: int, file_path: str, fingerprint_hash: str) -> bool:
 		
 		sql_query = """
-			INSERT INTO SONGS (title, artist, album, genres, duration_ms, file_path, file_hash)
+			INSERT INTO SONGS (title, artist, album, genres, duration_ms, file_path, fingerprint_hash)
 			VALUES (?, ?, ?, ?, ?, ?, ?)
 		"""
 		
-		success = self.execute(sql_query, (title, artist, album, genres, duration_ms, file_path, file_hash))
+		success = self.execute(sql_query, (title, artist, album, genres, duration_ms, file_path, fingerprint_hash))
 		if not success:
 			return False
 
@@ -174,13 +174,27 @@ class SQL_Connector:
 		self.commit()
 		return True
 	
-	def check_song_exists(self, file_hash: str) -> bool:
+	def check_song_exists_file_path(self, file_path: str) -> bool:
 		sql_query = """
-			SELECT * FROM SONGS
-			WHERE file_hash=?
+			SELECT 1 FROM SONGS
+			WHERE file_path=?
+			LIMIT 1
 		"""
 
-		self.execute(sql_query, (file_hash,))
+		self.execute(sql_query, (file_path,))
+
+		song = self.db_cursor.fetchone()
+
+		return song != None
+
+	def check_song_exists_fingerprint_hash(self, fingerprint_hash: str) -> bool:
+		sql_query = """
+			SELECT 1 FROM SONGS
+			WHERE fingerprint_hash=?
+			LIMIT 1
+		"""
+
+		self.execute(sql_query, (fingerprint_hash,))
 
 		song = self.db_cursor.fetchone()
 

@@ -9,11 +9,12 @@ from models.music_folders import MusicFoldersInfo
 from models.playlist import PlaylistInfo
 from models.song import SongInfo
 
-from utils.hashing import calculate_file_hash
+from utils.hashing import calculate_acoustic_fingerprint_hash
 from utils.search_filter import build_music_query
 from utils import logger
 
 import os
+import acoustid
 
 class LibaryService:
 	def __init__(self):
@@ -76,8 +77,8 @@ class LibaryService:
 		return self.sql_db_connector.check_folder_exists(folder_path)
 
 	def add_song(self, title: str, artist: str, album: str, genres: str,
-			  		duration_ms: int, file_path: str, file_hash: str) -> None:
-		self.sql_db_connector.add_song(title, artist, album, genres, duration_ms, file_path, file_hash)
+			  		duration_ms: int, file_path: str, fingerprint_hash: str) -> None:
+		self.sql_db_connector.add_song(title, artist, album, genres, duration_ms, file_path, fingerprint_hash)
 
 	def get_song(self, id: int) -> SongInfo:
 		song = self.sql_db_connector.get_song(id)
@@ -98,8 +99,11 @@ class LibaryService:
 	def delete_song(self, song_id: int) -> None:
 		self.sql_db_connector.remove_song(song_id)
 
-	def check_song_exists(self, file_hash: str) -> bool:
-		return self.sql_db_connector.check_song_exists(file_hash)
+	def check_song_exists_file_path(self, file_path: str) -> bool:
+		return self.sql_db_connector.check_song_exists_file_path(file_path)
+
+	def check_song_exists_fingerprint_hash(self, fingerprint_hash: str) -> bool:
+		return self.sql_db_connector.check_song_exists_fingerprint_hash(fingerprint_hash)
 	
 	def add_song_to_playlist(self, song_id: int, playlist_id: int) -> None:
 		self.sql_db_connector.add_song_to_playlist(song_id, playlist_id)
@@ -155,7 +159,6 @@ class LibaryService:
 				genres = ""
 				duration = int(audio_file.info.length * 1000)
 				file_path = curr_path
-				file_hash = calculate_file_hash(file_path)
 				if "title" in audio:
 					title = audio["title"][0]
 				if "artist" in audio:
@@ -168,9 +171,13 @@ class LibaryService:
 						genres += "{};".format(genre)
 					genres = genres[0:len(genres) - 1]
 
-				if not self.check_song_exists(file_hash):	# TODO: Check if file exist too. Not just hash
-					self.add_song(title, artist, album, genres, duration, file_path, file_hash)
-					added_num_songs += 1
+				if not self.check_song_exists_file_path(file_path):
+					duration_sec, fingerprint = acoustid.fingerprint_file(file_path)
+					fingerprint_hash = calculate_acoustic_fingerprint_hash(fingerprint)
+
+					if not self.check_song_exists_fingerprint_hash(fingerprint_hash):
+						self.add_song(title, artist, album, genres, duration, file_path, fingerprint_hash)
+						added_num_songs += 1
 			else:
 				curr_path += ("/" if "/" in curr_path else "\\")
 				if os.path.isdir(curr_path):
