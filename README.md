@@ -285,9 +285,9 @@ Terminal Jukebox is built using:
 
 * [![Python][Python]][python-url]
 * [![SQLite][SQLite]][sqlite-url]
-* [![Textual][Textual]](textual-url)
-* [just_playback](just-playback-library)
-* [pyacoustic](pyacoustic-library)
+* [![Textual][Textual]][textual-url]
+* [just_playback][just-playback-library]
+* [pyacoustic][pyacoustic-library]
 
 ## AI Assistance
 
