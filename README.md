@@ -38,6 +38,7 @@ Instead of relying on a graphical desktop music player, Terminal Jukebox provide
 
 - Python 3.13 or later
 - pip
+- GNU Make (for the Makefile installation method)
 - A terminal capable of displaying the Textual interface
 - A local music collection
 
@@ -50,6 +51,36 @@ Clone the repository:
 Move into the project directory:
 
     cd terminal-jukebox
+
+### Option 1: Using Makefile
+
+The recommended installation method is to use the provided [Makefile](./Makefile).
+
+Create the virtual environment to install the required dependencies and build the application:
+
+    make install
+    make build
+
+The Makefile will:
+
+1. Create a Python virtual environment in env/.
+2. Install the required packages from requirements.txt.
+3. Build the application as a standalone exectuable found inside dist/.
+
+#### Makefile Commands
+
+The following commands are available:
+
+| Command | Description |
+|---|---|
+| `make install` | Creates the virtual environment and installs dependencies |
+| `make test` | Runs the test suite |
+| `make build` | Builds the application using PyInstaller |
+| `make clean` | Removes the virtual environment and build files |
+
+### Option 2: Manual Installation and Setup
+
+If you do not have `make` installed, you can set up the project manually.
 
 Create a virtual environment:
 
