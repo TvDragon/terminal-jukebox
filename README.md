@@ -318,7 +318,7 @@ Terminal Jukebox is built using:
 * [![SQLite][SQLite]][sqlite-url]
 * [![Textual][Textual]][textual-url]
 * [just_playback][just-playback-library]
-* [pyacoustic][pyacoustic-library]
+* [pyacousticid][pyacousticid-library]
 
 ## AI Assistance
 
@@ -347,4 +347,4 @@ See the [`LICENSE`](./LICENSE) file for more information.
 [Textual]: https://img.shields.io/badge/Textual-000000?style=for-the-badge&logo=textual&logoColor=FFFFF
 [textual-url]: https://textual.textualize.io/
 [just-playback-library]: https://github.com/cheofusi/just_playback
-[pyacoustic-library]: https://github.com/beetbox/pyacoustid
+[pyacousticid-library]: https://github.com/beetbox/pyacoustid
