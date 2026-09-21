@@ -112,6 +112,8 @@ or:
 
 The application will open in your terminal.
 
+Maximize the application to view and use the application properly.
+
 ## Controls
 
 The exact keyboard controls may change as development continues.
